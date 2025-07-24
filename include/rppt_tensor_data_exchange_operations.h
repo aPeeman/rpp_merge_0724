@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPT_DATA_EXCHANGE_OPERATIONS_H
@@ -44,8 +46,8 @@ extern "C" {
  * \details The copy operation runs a buffer copy for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_copy_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_copy_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -62,8 +64,8 @@ RppStatus rppt_copy_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPt
  * \details The copy operation runs a buffer copy for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_copy_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_copy_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -74,14 +76,19 @@ RppStatus rppt_copy_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPt
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_copy_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, rppHandle_t rppHandle);
+
+NppStatus nppiCopy_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI);
+NppStatus nppiCopy_8u_C1R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, NppStreamContext nppStreamCtx);
+NppStatus nppiCopy_8u_C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI);
+NppStatus nppiCopy_8u_C3R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, NppStreamContext nppStreamCtx);
 #endif // GPU_SUPPORT
 
 /*! \brief Swap channels operation on HOST backend for a NCHW/NHWC layout tensor
  * \details The swap channels operation swaps R and B channels to toggle RGB<->BGR for a batch of RGB(3 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_swap_channels_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_swap_channels_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -98,8 +105,8 @@ RppStatus rppt_swap_channels_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPt
  * \details The swap channels operation swaps R and B channels to toggle RGB<->BGR for a batch of RGB(3 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_swap_channels_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_swap_channels_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -110,14 +117,19 @@ RppStatus rppt_swap_channels_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPt
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_swap_channels_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, rppHandle_t rppHandle);
+NppStatus nppiSwapChannels_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, const int aDstOrder[3]);
+NppStatus nppiSwapChannels_8u_C3R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, const int aDstOrder[3], NppStreamContext nppStreamCtx);
+NppStatus nppiSwapChannels_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, const int aDstOrder[3]);
+NppStatus nppiSwapChannels_8u_C3IR_Ctx(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oSizeROI, const int aDstOrder[3], NppStreamContext nppStreamCtx);
+NppStatus nppiSwapChannels_8u_C3IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oSizeROI, const int aDstOrder[3]);
 #endif // GPU_SUPPORT
 
 /*! \brief Color to greyscale operation on HOST backend for a NCHW/NHWC layout tensor
  * \details The color to greyscale operation runs for a batch of RGB(3 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_color_to_greyscale_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_color_to_greyscale_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -135,8 +147,8 @@ RppStatus rppt_color_to_greyscale_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, 
  * \details The color to greyscale operation runs for a batch of RGB(3 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html data_exchange_operations_color_to_greyscale_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html data_exchange_operations_color_to_greyscale_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -148,6 +160,10 @@ RppStatus rppt_color_to_greyscale_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, 
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_color_to_greyscale_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, RpptSubpixelLayout srcSubpixelLayout, rppHandle_t rppHandle);
+NppStatus nppiRGBToGray_8u_C3C1R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, NppStreamContext nppStreamCtx);
+NppStatus nppiRGBToGray_8u_C3C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI);
+NppStatus nppiRGBToGray_32f_C3C1R_Ctx(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oSizeROI, NppStreamContext nppStreamCtx);
+NppStatus nppiRGBToGray_32f_C3C1R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oSizeROI);
 #endif // GPU_SUPPORT
 
 /*! @}

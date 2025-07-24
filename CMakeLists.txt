@@ -1,29 +1,36 @@
-# Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+#[[
+MIT License
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+]]
 
 cmake_minimum_required(VERSION 3.5)
-set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_CXX_STANDARD 17)
+#set(CMAKE_CXX_COMPILER clang++)
+#set(CMAKE_CXX_STANDARD 17)
 
 # RPP Version
-set(VERSION "1.5.0")
+set(VERSION "6.0.0")
+set(CUDA_VERSION "11.6.3.9")
+set(CUDA_VERSION_MAJOR "11")
+
 
 # Set Project Version and Language
 project(rpp VERSION ${VERSION} LANGUAGES CXX)
@@ -87,15 +94,9 @@ else()
     elseif("${BACKEND}" STREQUAL "host" OR "${BACKEND}" STREQUAL "HOST" OR "${BACKEND}" STREQUAL "CPU" OR "${BACKEND}" STREQUAL "cpu")
         set(BACKEND "CPU")
     else()
-        message("-- ${Yellow}Warning: ${PROJECT_NAME} backend option: ${BACKEND} -- unknown${ColourReset}")
-        message("-- ${Yellow}Warning: ${PROJECT_NAME} default backend will be enforced${ColourReset}")
         set(BACKEND "HIP")
     endif()
 endif()
-
-message("-- ${BoldBlue}AMD ROCm Performance Primitives (RPP) Version -- ${VERSION}${ColourReset}")
-message("-- ${BoldBlue}AMD RPP install path set to -- ${CMAKE_INSTALL_PREFIX}${ColourReset}")
-message("-- ${BoldBlue}AMD RPP Backend set to -- ${BACKEND}${ColourReset}")
 
 # RPP Build Type
 if(NOT CMAKE_BUILD_TYPE)
@@ -113,19 +114,12 @@ else()
     # -DNDEBUG -- turn off asserts
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Ofast -DNDEBUG")
 endif()
-message("-- ${BoldBlue}AMD RPP Build Type -- ${CMAKE_BUILD_TYPE}${ColourReset}")
 
 if(WIN32 AND CMAKE_CROSSCOMPILING)
     set(WINE_CMD "wine")
 else()
     set(WINE_CMD)
 endif()
-
-message("-- ${Cyan}RPP Developer Options${ColourReset}")
-message("-- ${Cyan}     -D BUILD_WITH_AMD_ADVANCE=${BUILD_WITH_AMD_ADVANCE} [Turn ON/OFF Build for AMD advanced GPUs(default:ON)]${ColourReset}")
-message("-- ${Yellow}     NOTE: For ROCm Version less than 6.0.0+ Use -D BUILD_WITH_AMD_ADVANCE=OFF${ColourReset}")
-message("-- ${Cyan}     -D BACKEND=${BACKEND} [Select RPP Backend [options:CPU/OPENCL/HIP](default:HIP)]${ColourReset}")
-message("-- ${Cyan}     -D CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} [Select RPP build type [options:Debug/Release](default:Release)]${ColourReset}")
 
 # CMake checks and setups
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
@@ -134,8 +128,8 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # Half
-find_package(HALF REQUIRED)
-include_directories(${HALF_INCLUDE_DIRS})
+#find_package(HALF REQUIRED)
+#include_directories(${HALF_INCLUDE_DIRS})
 
 # OpenMP
 find_package(OpenMP REQUIRED)
@@ -192,6 +186,14 @@ else()
     endif()
 endif()
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${ROCM_PATH}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include/cpu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include/func_specific)
+include_directories(${INCLUDE_LIST})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include/hip)
+
 # Backend specific settings
 if("${BACKEND}" STREQUAL "HIP")
     # TBD: to be removed once STATIC becomes the only option within HIP backend, and all STATIC compile time switches are removed.
@@ -206,24 +208,24 @@ if("${BACKEND}" STREQUAL "HIP")
     endif()
 
     list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH} ${ROCM_PATH}/hip)
-    set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1100")
-    if (BUILD_WITH_AMD_ADVANCE)
-        set(DEFAULT_AMDGPU_TARGETS ${DEFAULT_AMDGPU_TARGETS} "gfx941;gfx942")
-    endif()
-    set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
+    #set(DEFAULT_AMDGPU_TARGETS "gfx803;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx1030;gfx1100")
+    #if (BUILD_WITH_AMD_ADVANCE)
+    #    set(DEFAULT_AMDGPU_TARGETS ${DEFAULT_AMDGPU_TARGETS} "gfx941;gfx942")
+    #endif()
+    #set(AMDGPU_TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine types for library to target")
     find_package(HIP QUIET)
     if(HIP_FOUND)
-        message("-- ${White}${PROJECT_NAME} -- Using HIP - Path:" ${HIP_PATH} "\tVersion:" ${HIP_VERSION} "\tCompiler:" ${HIP_COMPILER}${ColourReset})
+        #message("-- ${White}${PROJECT_NAME} -- Using HIP - Path:" ${HIP_PATH} "\tVersion:" ${HIP_VERSION} "\tCompiler:" ${HIP_COMPILER}${ColourReset})
         # TBD: Set external flag to notify GPU_SUPPORT and HIP backend availability - Compatible with rocAL and MIVisionX
         add_definitions(-DGPU_SUPPORT)
         # For cmakedefine01 in rpp_backend.h.in
         set(RPP_BACKEND_HIP 1)
         # To use RPP_BACKEND_HIP
         add_definitions(-DRPP_BACKEND_HIP=${RPP_BACKEND_HIP})
-        set(COMPILER_FOR_HIP ${ROCM_PATH}/llvm/bin/clang++)
+        set(COMPILER_FOR_HIP ${CMAKE_CXX_COMPILER})
         include_directories(${ROCM_PATH}/${CMAKE_INSTALL_INCLUDEDIR})
         link_directories(${HIP_PATH}/${CMAKE_INSTALL_LIBDIR})
-        # link To HIP Host library -- [hip::host] to use host API
+	# link To HIP Host library -- [hip::host] to use host API
         set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} hip::host)
 
         # Add modules
@@ -232,16 +234,16 @@ if("${BACKEND}" STREQUAL "HIP")
             add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/${MOD_NAME})
         endforeach(MOD_NAME)
 
-        message("-- ${Green}${PROJECT_NAME} set to build with HIP backend${ColourReset}")
+        #message("-- ${Green}${PROJECT_NAME} set to build with HIP backend${ColourReset}")
     else()
         set(BACKEND "CPU")
-        message("-- ${Yellow}HIP not found! ${PROJECT_NAME} set to build with CPU backend${ColourReset}")
+        #message("-- ${Yellow}HIP not found! ${PROJECT_NAME} set to build with CPU backend${ColourReset}")
     endif()
 elseif("${BACKEND}" STREQUAL "OCL")
     # Find package OpenCL
     find_package(OpenCL QUIET)
     if(OpenCL_FOUND)
-        message("-- ${White}${PROJECT_NAME} -- Using OpenCL - LIB:" ${OpenCL_LIBRARIES} "\tInclude:" ${OpenCL_INCLUDE_DIRS}${ColourReset})
+        #message("-- ${White}${PROJECT_NAME} -- Using OpenCL - LIB:" ${OpenCL_LIBRARIES} "\tInclude:" ${OpenCL_INCLUDE_DIRS}${ColourReset})
         # Set external flag to notify GPU_SUPPORT and OPENCL backend availability - Compatible with rocAL and MIVisionX
         add_definitions(-DGPU_SUPPORT)
         set(RPP_BACKEND_OPENCL 1) # For cmakedefine01 in rpp_backend.h.in
@@ -258,10 +260,10 @@ elseif("${BACKEND}" STREQUAL "OCL")
         set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${OpenCL_LIBRARIES})
         add_definitions(-DRPP_CACHE_DIR="${CACHE_DIR}")
 
-        message("-- ${Green}${PROJECT_NAME} set to build with GPU_SUPPORT using OpenCL backend${ColourReset}")
+        #message("-- ${Green}${PROJECT_NAME} set to build with GPU_SUPPORT using OpenCL backend${ColourReset}")
     else()
         set(BACKEND "CPU")
-        message("-- ${Yellow}OpenCL not found! ${PROJECT_NAME} falling back to build for CPU backend${ColourReset}")
+        #message("-- ${Yellow}OpenCL not found! ${PROJECT_NAME} falling back to build for CPU backend${ColourReset}")
     endif()
 
 endif()
@@ -284,15 +286,12 @@ endif()
 add_library(${PROJECT_NAME} SHARED include/rpp.h $<TARGET_OBJECTS:modules>)
 if("${SIMD_ENABLE}" STREQUAL "1")
     target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_SIMD_INTRINSICS=1)
-    message("-- ${Green}${PROJECT_NAME} set to build with ENABLE_SIMD_INTRINSICS${ColourReset}")
+    #message("-- ${Green}${PROJECT_NAME} set to build with ENABLE_SIMD_INTRINSICS${ColourReset}")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC ENABLE_SIMD_INTRINSICS=0)
-    message("-- ${Red}${PROJECT_NAME} set to build without ENABLE_SIMD_INTRINSICS${ColourReset}")
+    #message("-- ${Red}${PROJECT_NAME} set to build without ENABLE_SIMD_INTRINSICS${ColourReset}")
 endif()
 
-message("-- ${White}${PROJECT_NAME} -- Using Compiler - Path:" ${CMAKE_CXX_COMPILER} "\tVersion:" ${CMAKE_CXX_COMPILER_VERSION} "\tCompiler:" ${CMAKE_CXX_COMPILER_ID}${ColourReset})
-message("-- ${White}${PROJECT_NAME} -- CMAKE_CXX_FLAGS:${CMAKE_CXX_FLAGS}${ColourReset}")
-message("-- ${White}${PROJECT_NAME} -- Link Libraries: ${LINK_LIBRARY_LIST}${ColourReset}")
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARY_LIST})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
@@ -310,7 +309,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/include/func_specific
         ${INCLUDE_LIST}
 )
-
+                  
 if( "${BACKEND}" STREQUAL "HIP")
     target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -327,11 +326,47 @@ add_subdirectory(addkernels)
 
 # Installation
 # install RPP libs -- {ROCM_PATH}/lib
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
+#install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime NAMELINK_SKIP)
+#install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev NAMELINK_ONLY)
+#install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
 
-# install RPP include files -- {ROCM_PATH}/include/rpp/
+add_custom_target(create_symlink_npp ALL  
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppial.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppial.so.${CUDA_VERSION} libnppial.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppial.so.${CUDA_VERSION_MAJOR} libnppial.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppif.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppif.so.${CUDA_VERSION} libnppif.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppif.so.${CUDA_VERSION_MAJOR} libnppif.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppc.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppc.so.${CUDA_VERSION} libnppc.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppc.so.${CUDA_VERSION_MAJOR} libnppc.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppicc.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppicc.so.${CUDA_VERSION} libnppicc.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppicc.so.${CUDA_VERSION_MAJOR} libnppicc.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppidei.so.${CUDA_VERSION} 
+    COMMAND ln -sf libnppidei.so.${CUDA_VERSION} libnppidei.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppidei.so.${CUDA_VERSION_MAJOR} libnppidei.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppig.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppig.so.${CUDA_VERSION} libnppig.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppig.so.${CUDA_VERSION_MAJOR} libnppig.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppim.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppim.so.${CUDA_VERSION} libnppim.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppim.so.${CUDA_VERSION_MAJOR} libnppim.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppist.so.${CUDA_VERSION}
+    COMMAND ln -sf libnppist.so.${CUDA_VERSION} libnppist.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppist.so.${CUDA_VERSION_MAJOR} libnppist.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppisu.so.${CUDA_VERSION} 
+    COMMAND ln -sf libnppisu.so.${CUDA_VERSION} libnppisu.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppisu.so.${CUDA_VERSION_MAJOR} libnppisu.so
+    COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppitc.so.${CUDA_VERSION} 
+    COMMAND ln -sf libnppitc.so.${CUDA_VERSION} libnppitc.so.${CUDA_VERSION_MAJOR}
+    COMMAND ln -sf libnppitc.so.${CUDA_VERSION_MAJOR} libnppitc.so
+    COMMENT "Creating symlink to library"
+    VERBATIM
+)
+
+install(TARGETS rpp LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rpp
        COMPONENT dev
        PATTERN "*.h.in" EXCLUDE)
@@ -339,9 +374,73 @@ install(FILES ${PROJECT_BINARY_DIR}/include/rpp_backend.h
        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rpp
        COMPONENT dev)
 
+install(CODE "  
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppial.so.${CUDA_VERSION}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppial.so.${CUDA_VERSION} libnppial.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppial.so.${CUDA_VERSION_MAJOR} libnppial.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppif.so.${CUDA_VERSION}  
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppif.so.${CUDA_VERSION} libnppif.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppif.so.${CUDA_VERSION_MAJOR} libnppif.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppc.so.${CUDA_VERSION}  
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppc.so.${CUDA_VERSION} libnppc.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppc.so.${CUDA_VERSION_MAJOR} libnppc.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)  
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppicc.so.${CUDA_VERSION}  
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppicc.so.${CUDA_VERSION} libnppicc.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppicc.so.${CUDA_VERSION_MAJOR} libnppicc.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppidei.so.${CUDA_VERSION}  
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppidei.so.${CUDA_VERSION} libnppidei.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppidei.so.${CUDA_VERSION_MAJOR} libnppidei.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppig.so.${CUDA_VERSION}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppig.so.${CUDA_VERSION} libnppig.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppig.so.${CUDA_VERSION_MAJOR} libnppig.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppim.so.${CUDA_VERSION}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppim.so.${CUDA_VERSION} libnppim.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppim.so.${CUDA_VERSION_MAJOR} libnppim.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)  
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppist.so.${CUDA_VERSION}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppist.so.${CUDA_VERSION} libnppist.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppist.so.${CUDA_VERSION_MAJOR} libnppist.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)  
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppisu.so.${CUDA_VERSION}  
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf libnppisu.so.${CUDA_VERSION} libnppisu.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppisu.so.${CUDA_VERSION_MAJOR} libnppisu.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)
+    EXECUTE_PROCESS(COMMAND ln -sf lib${PROJECT_NAME}.so.${VERSION} libnppitc.so.${CUDA_VERSION}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppitc.so.${CUDA_VERSION} libnppitc.so.${CUDA_VERSION_MAJOR}
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib) 
+    EXECUTE_PROCESS(COMMAND ln -sf libnppitc.so.${CUDA_VERSION_MAJOR} libnppitc.so
+                    WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/cuda/targets/x86_64-linux/lib)   
+")
+
 # install Test
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utilities/test_suite/ DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utilities/rpp-performancetests DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
 
 # set license information
 set(CPACK_RESOURCE_FILE_LICENSE  "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")

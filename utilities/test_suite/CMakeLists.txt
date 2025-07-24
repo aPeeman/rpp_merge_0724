@@ -1,28 +1,27 @@
-################################################################################
-#
-# MIT License
-#
-# Copyright (c) 2023 Advanced Micro Devices, Inc.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-################################################################################
+#[[
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+]]
+
 cmake_minimum_required (VERSION 3.5)
 
 project(rpp-test)
@@ -52,6 +51,7 @@ endif()
 if(NOT RPP_FOUND)
     message("-- ${Yellow}${PROJECT_NAME} requires RPP. Install RPP before running CTests")
 else()
+    # RPP installation - Backend check
     set(RPP_BACKEND_HIP_FOUND 0)
     if(EXISTS ${RPP_INCLUDE_DIR}/rpp_backend.h)
         file(READ ${RPP_INCLUDE_DIR}/rpp_backend.h RPP_BACKEND_FILE)
@@ -62,6 +62,14 @@ else()
         set(BACKEND "HIP")
     elseif(NOT DEFINED BACKEND)
         set(BACKEND "CPU")
+    endif()
+
+    # RPP installation - Audio support check
+    set(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND 0)
+    if(EXISTS ${RPP_INCLUDE_DIR}/rpp_audio_augmentations_support.h)
+        file(READ ${RPP_INCLUDE_DIR}/rpp_audio_augmentations_support.h RPP_AUDIO_AUGMENTATIONS_SUPPORT_FILE)
+        string(REGEX MATCH "RPP_AUDIO_AUGMENTATIONS_SUPPORT ([0-9]*)" _ ${RPP_AUDIO_AUGMENTATIONS_SUPPORT_FILE})
+        set(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND ${CMAKE_MATCH_1})
     endif()
 endif(NOT RPP_FOUND)
 
@@ -84,17 +92,19 @@ if(Python3_FOUND)
     if(NIFTI_FOUND)
         add_test(
             NAME rpp_qa_tests_tensor_voxel_host_all
-            COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HOST/runTests_voxel.py --qa_mode 1 --batch_size 3
+            COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HOST/runVoxelTests.py --qa_mode 1 --batch_size 3
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )
     endif(NIFTI_FOUND)
-    if(libsnd_LIBS)
-        add_test(
-            NAME rpp_qa_tests_tensor_audio_host_all
-            COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HOST/runAudioTests.py --qa_mode 1 --batch_size 3
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    endif(libsnd_LIBS)
+    if(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND)
+        if(libsnd_LIBS)
+            add_test(
+                NAME rpp_qa_tests_tensor_audio_host_all
+                COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HOST/runAudioTests.py --qa_mode 1 --batch_size 3
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            )
+        endif(libsnd_LIBS)
+    endif(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND)
 
     if( "${BACKEND}" STREQUAL "HIP")
         # Running all HIP tests
@@ -106,10 +116,19 @@ if(Python3_FOUND)
         if(NIFTI_FOUND)
             add_test(
                 NAME rpp_qa_tests_tensor_voxel_hip_all
-                COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HIP/runTests_voxel.py --qa_mode 1 --batch_size 3
+                COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HIP/runVoxelTests.py --qa_mode 1 --batch_size 3
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             )
         endif(NIFTI_FOUND)
+        if(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND)
+            if(libsnd_LIBS)
+                add_test(
+                    NAME rpp_qa_tests_tensor_audio_hip_all
+                    COMMAND ${Python3_EXECUTABLE} ${ROCM_PATH}/share/rpp/test/HIP/runAudioTests.py --qa_mode 1 --batch_size 3
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                )
+            endif(libsnd_LIBS)
+        endif(RPP_AUDIO_AUGMENTATIONS_SUPPORT_FOUND)
 
     elseif( "${BACKEND}" STREQUAL "OCL")
         # TBD: Add OCL Tests

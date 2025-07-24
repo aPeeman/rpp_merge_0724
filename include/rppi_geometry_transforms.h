@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPI_GEOMETRY_TRANSFORMS_H
@@ -64,6 +66,10 @@ RppStatus rppi_flip_u8_pkd3_batchPD_host(RppPtr_t srcPtr, RppiSize *srcSize, Rpp
 RppStatus rppi_flip_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_flip_u8_pln3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_flip_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_flip_u8_pkd4_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_flip_pln1_batchPD_gpu(RppPtr_t srcPtr, RpptDataType dataType, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_flip_pkd3_batchPD_gpu(RppPtr_t srcPtr, RpptDataType dataType, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_flip_pkd4_batchPD_gpu(RppPtr_t srcPtr, RpptDataType dataType, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u *flipAxis, Rpp32u nbatchSize, rppHandle_t rppHandle);
 #endif // GPU_SUPPORT
 
 /******************** resize ********************/
@@ -364,6 +370,43 @@ RppStatus rppi_warp_perspective_u8_pkd3_batchPD_host(RppPtr_t srcPtr, RppiSize *
 RppStatus rppi_warp_perspective_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, RppiSize *dstSize, RppiSize maxDstSize, Rpp32f *perspectiveMatrix, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_warp_perspective_u8_pln3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, RppiSize *dstSize, RppiSize maxDstSize, Rpp32f *perspectiveMatrix, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_warp_perspective_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, RppiSize *dstSize, RppiSize maxDstSize, Rpp32f *perspectiveMatrix, Rpp32u nbatchSize, rppHandle_t rppHandle);
+#endif // GPU_SUPPORT
+
+#ifdef GPU_SUPPORT
+NppStatus nppiWarpPerspective_8u_C3R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, 
+				Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation);
+NppStatus nppiWarpPerspective_8u_C1R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpPerspective_8u_C1R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation);
+NppStatus nppiWarpPerspective_8u_C3R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpPerspective_8u_P3R_Ctx(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpPerspective_8u_P3R(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation);
+NppStatus nppiMirror_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_8u_C4R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_8u_C4IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_8u_C1R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx);
+NppStatus nppiMirror_8u_C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_8u_C1IR_Ctx(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx);
+NppStatus nppiMirror_8u_C1IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_8u_C3R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx);
+NppStatus nppiMirror_8u_C3IR_Ctx(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx);
+NppStatus nppiMirror_8u_C3IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C4R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C4R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_16u_C4R(const Npp16u *pSrc, int nSrcStep, Npp16u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C4IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C4IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_16u_C4IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C3R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C3R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C3IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C3IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_16u_C3IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C1R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C1R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_16u_C1R(const Npp16u *pSrc, int nSrcStep, Npp16u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32s_C1IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_32f_C1IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
+NppStatus nppiMirror_16u_C1IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip);
 #endif // GPU_SUPPORT
 
 /*! @}

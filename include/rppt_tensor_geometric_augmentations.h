@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPT_TENSOR_GEOMETRIC_AUGMENTATIONS_H
@@ -44,8 +46,8 @@ extern "C" {
  * \details The crop augmentation crops each image to a given ROI, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_crop_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_crop_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -64,8 +66,8 @@ RppStatus rppt_crop_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPt
  * \details The crop augmentation crops each image to a given ROI, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_crop_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_crop_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -84,8 +86,8 @@ RppStatus rppt_crop_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr
  * \details The crop mirror normalize augmentation crops each image to a given ROI, does an optional mirror and/or normalize for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_crop_mirror_normalize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_crop_mirror_normalize_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -107,8 +109,8 @@ RppStatus rppt_crop_mirror_normalize_host(RppPtr_t srcPtr, RpptDescPtr srcDescPt
  * \details The crop mirror normalize augmentation crops each image to a given ROI, does an optional mirror and/or normalize for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_crop_mirror_normalize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_crop_mirror_normalize_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -130,8 +132,8 @@ RppStatus rppt_crop_mirror_normalize_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr
  * \details The warp affine augmentation performs affine transformations for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_warp_affine_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_warp_affine_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -152,8 +154,8 @@ RppStatus rppt_warp_affine_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_
  * \details The warp affine augmentation performs affine transformations for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_warp_affine_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_warp_affine_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -168,14 +170,22 @@ RppStatus rppt_warp_affine_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_warp_affine_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, Rpp32f *affineTensor, RpptInterpolationType interpolationType, RpptROIPtr roiTensorPtrSrc, RpptRoiType roiType, rppHandle_t rppHandle);
+NppStatus nppiWarpAffine_8u_C3R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, 
+				Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation);
+NppStatus nppiWarpAffine_8u_C1R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpAffine_8u_C1R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation);
+NppStatus nppiWarpAffine_8u_C3R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation);
+NppStatus nppiWarpAffine_8u_C3R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpAffine_8u_P3R_Ctx(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiWarpAffine_8u_P3R(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation);
 #endif // GPU_SUPPORT
 
 /*! \brief Flip augmentation on HOST backend for a NCHW/NHWC layout tensor
  * \details The flip augmentation performs a mask-controlled horizontal/vertical flip for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_flip_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_flip_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -196,8 +206,8 @@ RppStatus rppt_flip_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPt
  * \details The flip augmentation performs a mask-controlled horizontal/vertical flip for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_flip_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_flip_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -212,14 +222,15 @@ RppStatus rppt_flip_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPt
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_flip_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, Rpp32u *horizontalTensor, Rpp32u *verticalTensor, RpptROIPtr roiTensorPtrSrc, RpptRoiType roiType, rppHandle_t rppHandle);
+//NppStatus nppiMirror_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip);
 #endif // GPU_SUPPORT
 
 /*! \brief Resize augmentation on HOST backend for a NCHW/NHWC layout tensor
  * \details The resize augmentation performs an image resize for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -240,8 +251,8 @@ RppStatus rppt_resize_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dst
  * \details The resize augmentation performs an image resize for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -256,14 +267,21 @@ RppStatus rppt_resize_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dst
  * \retval RPP_ERROR* Unsuccessful completion.
  */
 RppStatus rppt_resize_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, RpptImagePatchPtr dstImgSizes, RpptInterpolationType interpolationType, RpptROIPtr roiTensorPtrSrc, RpptRoiType roiType, rppHandle_t rppHandle);
+NppStatus nppiResize_8u_C3R(const Npp8u *pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, 
+					Npp8u *pDst, int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation);
+NppStatus nppiResize_8u_C1R_Ctx(const Npp8u *pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst, int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiResize_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst, int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation);
+NppStatus nppiResize_8u_C3R_Ctx(const Npp8u *pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst, int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiResize_8u_P3R_Ctx(const Npp8u *pSrc[3], int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst[3], int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiResize_8u_P3R(const Npp8u *pSrc[3], int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst[3], int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation);
 #endif // GPU_SUPPORT
 
 /*! \brief Resize mirror normalize augmentation on HOST backend for a NCHW/NHWC layout tensor
  * \details The resize mirror normalize augmentation performs an image resize, an optional mirror and/or normalize, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_mirror_normalize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_mirror_normalize_img115x115.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -287,8 +305,8 @@ RppStatus rppt_resize_mirror_normalize_host(RppPtr_t srcPtr, RpptDescPtr srcDesc
  * \details The resize mirror normalize augmentation performs an image resize, an optional mirror and/or normalize, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_mirror_normalize_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_mirror_normalize_img115x115.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -312,8 +330,8 @@ RppStatus rppt_resize_mirror_normalize_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescP
  * \details The resize crop mirror augmentation performs an image resized crop, with an optional mirror, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_crop_mirror_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_crop_mirror_img115x115.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -335,8 +353,8 @@ RppStatus rppt_resize_crop_mirror_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, 
  * \details The resize crop mirror augmentation performs an image resized crop, with an optional mirror, for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_resize_crop_mirror_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_resize_crop_mirror_img115x115.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -358,8 +376,8 @@ RppStatus rppt_resize_crop_mirror_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, R
  * \details The rotate augmentation performs a rotate transformations for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_rotate_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_rotate_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HOST memory
@@ -380,8 +398,8 @@ RppStatus rppt_rotate_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dst
  * \details The rotate augmentation performs a rotate transformations for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input
- * \image html geometric_augmentations_rotate_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_rotate_img150x150.png Sample Output
  * \param [in] srcPtr source tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
  * \param [out] dstPtr destination tensor in HIP memory
@@ -402,9 +420,9 @@ RppStatus rppt_rotate_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstP
  * \details The phase augmentation computes phase of corresponding pixels for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input1
- * \image html img150x150_2.jpg Sample Input2
- * \image html phase_augmentation_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input1
+ * \image html img150x150_2.png Sample Input2
+ * \image html geometric_augmentations_phase_img150x150.png Sample Output
  * \param [in] srcPtr1 source1 tensor in HOST memory
  * \param [in] srcPtr2 source2 tensor in HOST memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
@@ -424,9 +442,9 @@ RppStatus rppt_phase_host(RppPtr_t srcPtr1, RppPtr_t srcPtr2, RpptDescPtr srcDes
  * \details The phase augmentation computes phase of corresponding pixels for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
  * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
  * - dstPtr depth ranges - Will be same depth as srcPtr.
- * \image html img150x150.jpg Sample Input1
- * \image html img150x150_2.jpg Sample Input2
- * \image html phase_augmentation_img150x150.jpg Sample Output
+ * \image html img150x150.png Sample Input1
+ * \image html img150x150_2.png Sample Input2
+ * \image html geometric_augmentations_phase_img150x150.png Sample Output
  * \param [in] srcPtr1 source1 tensor in HIP memory
  * \param [in] srcPtr2 source2 tensor in HIP memory
  * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
@@ -446,16 +464,16 @@ RppStatus rppt_phase_gpu(RppPtr_t srcPtr1, RppPtr_t srcPtr2, RpptDescPtr srcDesc
  * \details This function performs slice augmentation on a generic 4D tensor.
  *          Slice augmentation involves selecting a region of interest (ROI) from the source tensor
  *          and copying it to the destination tensor. Support added for f32 -> f32 and u8 -> u8 dataypes.
- * \param[in] srcPtr source tensor memory
+ * \param[in] srcPtr source tensor in HOST memory
  * \param[in] srcGenericDescPtr source tensor descriptor
- * \param[out] dstPtr destination tensor memory
+ * \param[out] dstPtr destination tensor in HOST memory
  * \param[in] dstGenericDescPtr destination tensor descriptor
  * \param[in] roiGenericPtrSrc ROI data for each image in source tensor (tensor of batchSize RpptRoiGeneric values)
  * \param[in] roiType ROI type used (RpptRoi3DType::XYZWHD or RpptRoi3DType::LTFRBB)
- * \param [in] rppHandle Host-handle
- * \return <tt> RppStatus enum</tt>.
- * \returns RPP_SUCCESS <tt>\ref RppStatus</tt> on successful completion.
- * Else return RPP_ERROR
+ * \param [in] rppHandle RPP HOST handle created with <tt>\ref rppCreateWithBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
  * \ingroup group_tensor_geometric
  */
 RppStatus rppt_slice_host(RppPtr_t srcPtr, RpptGenericDescPtr srcGenericDescPtr, RppPtr_t dstPtr, RpptGenericDescPtr dstGenericDescPtr, RpptROI3DPtr roiGenericPtrSrc, RpptRoi3DType roiType, rppHandle_t rppHandle);
@@ -465,19 +483,200 @@ RppStatus rppt_slice_host(RppPtr_t srcPtr, RpptGenericDescPtr srcGenericDescPtr,
  * \details This function performs slice augmentation on a generic 4D tensor.
  *          Slice augmentation involves selecting a region of interest (ROI) from the source tensor
  *          and copying it to the destination tensor. Support added for f32 -> f32 and u8 -> u8 dataypes.
- * \param[in] srcPtr source tensor memory
+ * \param[in] srcPtr source tensor in HIP memory
  * \param[in] srcGenericDescPtr source tensor descriptor
- * \param[out] dstPtr destination tensor memory
+ * \param[out] dstPtr destination tensor in HIP memory
  * \param[in] dstGenericDescPtr destination tensor descriptor
  * \param[in] roiGenericPtrSrc ROI data for each image in source tensor (tensor of batchSize RpptRoiGeneric values)
  * \param[in] roiType ROI type used (RpptRoi3DType::XYZWHD or RpptRoi3DType::LTFRBB)
- * \param [in] rppHandle HIP-handle
- * \return <tt> RppStatus enum</tt>.
- * \returns RPP_SUCCESS <tt>\ref RppStatus</tt> on successful completion.
- * Else return RPP_ERROR
+ * \param [in] rppHandle RPP HIP handle created with <tt>\ref rppCreateWithStreamAndBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
  * \ingroup group_tensor_geometric
  */
 RppStatus rppt_slice_gpu(RppPtr_t srcPtr, RpptGenericDescPtr srcGenericDescPtr, RppPtr_t dstPtr, RpptGenericDescPtr dstGenericDescPtr, RpptROI3DPtr roiGenericPtrSrc, RpptRoi3DType roiType, rppHandle_t rppHandle);
+#endif // GPU_SUPPORT
+
+/*! \brief Crop and Patch augmentation on HOST backend for a NCHW/NHWC layout tensor
+ * \details The crop and patch augmentation crops a ROI from 1st image and patches the cropped region in 2nd image as per the patch co-ordinates
+            for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
+ * - srcPtr1 depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - srcPtr2 depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - dstPtr depth ranges - Will be same depth as srcPtr.
+ * \image html img150x150.png Sample Input1
+ * \image html img150x150_2.png Sample Input2
+ * \image html geometric_augmentations_crop_and_patch_img150x150.png Sample Output
+ * \param [in] srcPtr1 source tensor1 in HOST memory
+ * \param [in] srcPtr2 source tensor2 in HOST memory
+ * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
+ * \param [out] dstPtr destination tensor in HOST memory
+ * \param [in] dstDescPtr destination tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = same as that of srcDescPtr)
+ * \param [in] roiTensorSrc ROI data in HOST memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] cropRoiTensor crop co-ordinates in HOST memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] patchRoiTensor patch co-ordinates in HOST memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] roiType ROI type used (RpptRoiType::XYWH or RpptRoiType::LTRB)
+ * \param [in] rppHandle RPP HOST handle created with <tt>\ref rppCreateWithBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ */
+RppStatus rppt_crop_and_patch_host(RppPtr_t srcPtr1, RppPtr_t srcPtr2, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, RpptROIPtr roiTensorPtrDst, RpptROIPtr cropRoi, RpptROIPtr patchRoi, RpptRoiType roiType, rppHandle_t rppHandle);
+
+#ifdef GPU_SUPPORT
+/*! \brief Crop and Patch augmentation on HIP backend for a NCHW/NHWC layout tensor
+ * \details The crop and patch augmentation crops a ROI from 1st image and patches the cropped region in 2nd image as per the patch co-ordinates
+            for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout.<br>
+ * - srcPtr1 depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - srcPtr2 depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - dstPtr depth ranges - Will be same depth as srcPtr.
+ * \image html img150x150.png Sample Input1
+ * \image html img150x150_2.png Sample Input2
+ * \image html geometric_augmentations_crop_and_patch_img150x150.png Sample Output
+ * \param [in] srcPtr1 source tensor1 in HIP memory
+ * \param [in] srcPtr2 source tensor2 in HIP memory
+ * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
+ * \param [out] dstPtr destination tensor in HIP memory
+ * \param [in] dstDescPtr destination tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = same as that of srcDescPtr)
+ * \param [in] roiTensorSrc ROI data in HIP memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] cropRoiTensor crop co-ordinates in HIP memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] patchRoiTensor patch co-ordinates in HIP memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] roiType ROI type used (RpptRoiType::XYWH or RpptRoiType::LTRB)
+ * \param [in] rppHandle RPP HIP handle created with <tt>\ref rppCreateWithStreamAndBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ */
+RppStatus rppt_crop_and_patch_gpu(RppPtr_t srcPtr1, RppPtr_t srcPtr2, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, RpptROIPtr roiTensorPtrDst, RpptROIPtr cropRoi, RpptROIPtr patchRoi, RpptRoiType roiType, rppHandle_t rppHandle);
+#endif // GPU_SUPPORT
+
+/*! \brief Flip voxel augmentation HOST
+ * \details The flip voxel augmentation performs a mask-controlled horizontal/vertical/depth flip on a generic 4D tensor.
+            <br> Support added for f32 -> f32 and u8 -> u8 dataypes.
+ * \image html input150x150x4.gif Sample Input
+ * \image html geometric_augmentations_flip_150x150x4.gif Sample Output
+ * \param[in] srcPtr source tensor in HOST memory
+ * \param[in] srcGenericDescPtr source tensor descriptor (Restrictions - numDims = 5, offsetInBytes >= 0, dataType = U8/F32, layout = NCDHW/NDHWC, c = 1/3)
+ * \param[out] dstPtr destination tensor in HOST memory
+ * \param[in] dstGenericDescPtr destination tensor descriptor (Restrictions - numDims = 5, offsetInBytes >= 0, dataType = U8/F32, layout = NCDHW/NDHWC, c = 1/3)
+ * \param [in] horizontalTensor horizontal flag values to set horizontal flip on/off (1D tensor in HOST memory, of size batchSize, with horizontalTensor[i] = 0/1)
+ * \param [in] verticalTensor vertical flag values to set vertical flip on/off (1D tensor in HOST memory, of size batchSize, with verticalTensor[i] = 0/1)
+ * \param [in] depthTensor depth flag values to set depth flip on/off (1D tensor in HOST memory, of size batchSize, with depthTensor[i] = 0/1)
+ * \param[in] roiGenericPtrSrc ROI data for each image in source tensor (tensor of batchSize RpptRoiGeneric values)
+ * \param[in] roiType ROI type used (RpptRoi3DType::XYZWHD or RpptRoi3DType::LTFRBB)
+ * \param [in] rppHandle RPP HOST handle created with <tt>\ref rppCreateWithBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ * \ingroup group_tensor_geometric
+ */
+RppStatus rppt_flip_voxel_host(RppPtr_t srcPtr, RpptGenericDescPtr srcGenericDescPtr, RppPtr_t dstPtr, RpptGenericDescPtr dstGenericDescPtr, Rpp32u *horizontalTensor, Rpp32u *verticalTensor, Rpp32u *depthTensor, RpptROI3DPtr roiGenericPtrSrc, RpptRoi3DType roiType, rppHandle_t rppHandle);
+
+#ifdef GPU_SUPPORT
+/*! \brief Flip voxel augmentation GPU
+ * \details The flip voxel augmentation performs a mask-controlled horizontal/vertical/depth flip on a generic 4D tensor.
+            <br> Support added for f32 -> f32 and u8 -> u8 dataypes.
+ * \image html input150x150x4.gif Sample Input
+ * \image html geometric_augmentations_flip_150x150x4.gif Sample Output
+ * \param[in] srcPtr source tensor in HIP memory
+ * \param[in] srcGenericDescPtr source tensor descriptor (Restrictions - numDims = 5, offsetInBytes >= 0, dataType = U8/F32, layout = NCDHW/NDHWC, c = 1/3)
+ * \param[out] dstPtr destination tensor in HIP memory
+ * \param[in] dstGenericDescPtr destination tensor descriptor (Restrictions - numDims = 5, offsetInBytes >= 0, dataType = U8/F32, layout = NCDHW/NDHWC, c = 1/3)
+ * \param [in] horizontalTensor horizontal flag values to set horizontal flip on/off (1D tensor in pinned/HOST memory, of size batchSize, with horizontalTensor[i] = 0/1)
+ * \param [in] verticalTensor vertical flag values to set vertical flip on/off (1D tensor in pinned/HOST memory, of size batchSize, with verticalTensor[i] = 0/1)
+ * \param [in] depthTensor depth flag values to set depth flip on/off (1D tensor in pinned/HOST memory, of size batchSize, with depthTensor[i] = 0/1)
+ * \param[in] roiGenericPtrSrc ROI data for each image in source tensor (tensor of batchSize RpptRoiGeneric values)
+ * \param[in] roiType ROI type used (RpptRoi3DType::XYZWHD or RpptRoi3DType::LTFRBB)
+ * \param [in] rppHandle RPP HIP handle created with <tt>\ref rppCreateWithStreamAndBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ * \ingroup group_tensor_geometric
+ */
+RppStatus rppt_flip_voxel_gpu(RppPtr_t srcPtr, RpptGenericDescPtr srcGenericDescPtr, RppPtr_t dstPtr, RpptGenericDescPtr dstGenericDescPtr, Rpp32u *horizontalTensor, Rpp32u *verticalTensor, Rpp32u *depthTensor, RpptROI3DPtr roiGenericPtrSrc, RpptRoi3DType roiType, rppHandle_t rppHandle);
+#endif // GPU_SUPPORT
+
+/*! \brief Remap augmentation on HOST backend for a NCHW/NHWC layout tensor
+ * \details Performs a remap operation using user specified remap tables for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout. For each image, the output(x,y) = input(mapx(x, y), mapy(x, y)) for every (x,y) in the destination image.<br>
+ * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - dstPtr depth ranges - Will be same depth as srcPtr.
+ * \image html img150x150.png Sample Input
+ * \image html geometric_augmentations_remap_img150x150.png Sample Output
+ * \param [in] srcPtr source tensor in HOST memory
+ * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
+ * \param [out] dstPtr destination tensor in HOST memory
+ * \param [in] dstDescPtr destination tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = same as that of srcDescPtr)
+ * \param [in] rowRemapTable Rpp32f row numbers in HOST memory for every pixel in the input batch of images (Restrictions - rois in the rowRemapTable data for each image in batch must match roiTensorSrc)
+ * \param [in] colRemapTable Rpp32f column numbers in HOST memory for every pixel in the input batch of images (Restrictions - rois in the colRemapTable data for each image in batch must match roiTensorSrc)
+ * \param [in] tableDescPtr rowRemapTable and colRemapTable common tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = F32, layout = NHWC, c = 1)
+ * \param [in] interpolationType Interpolation type used in <tt> \ref RpptInterpolationType </tt> (Restrictions - Supports only NEAREST_NEIGHBOR and BILINEAR)
+ * \param [in] roiTensorSrc ROI data in HOST memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] roiType ROI type used (RpptRoiType::XYWH or RpptRoiType::LTRB)
+ * \param [in] rppHandle RPP HOST handle created with <tt>\ref rppCreateWithBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ * \ingroup group_tensor_geometric
+ */
+RppStatus rppt_remap_host(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, Rpp32f *rowRemapTable, Rpp32f *colRemapTable, RpptDescPtr tableDescPtr, RpptInterpolationType interpolationType, RpptROIPtr roiTensorPtrSrc, RpptRoiType roiType, rppHandle_t rppHandle);
+
+#ifdef GPU_SUPPORT
+/*! \brief Remap augmentation on HIP backend for a NCHW/NHWC layout tensor
+ * \details Performs a remap operation using user specified remap tables for a batch of RGB(3 channel) / greyscale(1 channel) images with an NHWC/NCHW tensor layout. For each image, the output(x,y) = input(mapx(x, y), mapy(x, y)) for every (x,y) in the destination image.<br>
+ * - srcPtr depth ranges - Rpp8u (0 to 255), Rpp16f (0 to 1), Rpp32f (0 to 1), Rpp8s (-128 to 127).
+ * - dstPtr depth ranges - Will be same depth as srcPtr.
+ * \image html img150x150.jpg Sample Input
+ * \image html geometric_augmentations_remap_img150x150.jpg Sample Output
+ * \param [in] srcPtr source tensor in HIP memory
+ * \param [in] srcDescPtr source tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = 1/3)
+ * \param [out] dstPtr destination tensor in HIP memory
+ * \param [in] dstDescPtr destination tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = U8/F16/F32/I8, layout = NCHW/NHWC, c = same as that of srcDescPtr)
+ * \param [in] rowRemapTable Rpp32f row numbers in HIP memory for every pixel in the input batch of images (Restrictions - rois in the rowRemapTable data for each image in batch must match roiTensorSrc)
+ * \param [in] colRemapTable Rpp32f column numbers in HIP memory for every pixel in the input batch of images (Restrictions - rois in the colRemapTable data for each image in batch must match roiTensorSrc)
+ * \param [in] tableDescPtr rowRemapTable and colRemapTable common tensor descriptor (Restrictions - numDims = 4, offsetInBytes >= 0, dataType = F32, layout = NHWC, c = 1)
+ * \param [in] interpolationType Interpolation type used in <tt> \ref RpptInterpolationType </tt> (Restrictions - Supports only NEAREST_NEIGHBOR and BILINEAR)
+ * \param [in] roiTensorSrc ROI data in HIP memory, for each image in source tensor (2D tensor of size batchSize * 4, in either format - XYWH(xy.x, xy.y, roiWidth, roiHeight) or LTRB(lt.x, lt.y, rb.x, rb.y))
+ * \param [in] roiType ROI type used (RpptRoiType::XYWH or RpptRoiType::LTRB)
+ * \param [in] rppHandle RPP HIP handle created with <tt>\ref rppCreateWithStreamAndBatchSize()</tt>
+ * \return A <tt> \ref RppStatus</tt> enumeration.
+ * \retval RPP_SUCCESS Successful completion.
+ * \retval RPP_ERROR* Unsuccessful completion.
+ * \ingroup group_tensor_geometric
+ */
+RppStatus rppt_remap_gpu(RppPtr_t srcPtr, RpptDescPtr srcDescPtr, RppPtr_t dstPtr, RpptDescPtr dstDescPtr, Rpp32f *rowRemapTable, Rpp32f *colRemapTable, RpptDescPtr tableDescPtr, RpptInterpolationType interpolationType, RpptROIPtr roiTensorPtrSrc, RpptRoiType roiType, rppHandle_t rppHandle);
+NppStatus nppiRemap_8u_C1R_Ctx(const Npp8u  * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                     const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                           Npp8u  * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_8u_C3R(const Npp8u  * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, 
+                 const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                       Npp8u  * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation);
+NppStatus nppiRemap_8u_C3R_Ctx(const Npp8u  * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                     const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                           Npp8u  * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_16u_C1R_Ctx(const Npp16u * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp16u * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_16u_C3R_Ctx(const Npp16u * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp16u * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_16s_C1R_Ctx(const Npp16s * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp16s * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_16s_C3R_Ctx(const Npp16s * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp16s * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_32f_C1R_Ctx(const Npp32f * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp32f * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_32f_C3R_Ctx(const Npp32f * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp32f * pXMap, int nXMapStep, const Npp32f * pYMap, int nYMapStep,
+                            Npp32f * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_64f_C1R_Ctx(const Npp64f * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp64f * pXMap, int nXMapStep, const Npp64f * pYMap, int nYMapStep,
+                            Npp64f * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiRemap_64f_C3R_Ctx(const Npp64f * pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI,
+                      const Npp64f * pXMap, int nXMapStep, const Npp64f * pYMap, int nYMapStep,
+                            Npp64f * pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation, NppStreamContext nppStreamCtx);                           
 #endif // GPU_SUPPORT
 
 /*! @}

@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPI_COLOR_MODEL_CONVERSIONS_H
@@ -226,6 +228,7 @@ RppStatus rppi_look_up_table_u8_pkd3_batchPD_host(RppPtr_t srcPtr, RppiSize *src
 RppStatus rppi_look_up_table_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp8u* lutPtr, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_look_up_table_u8_pln3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp8u* lutPtr, Rpp32u nbatchSize, rppHandle_t rppHandle);
 RppStatus rppi_look_up_table_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp8u* lutPtr, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_lut_linear_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp32u nbatchSize, const Rpp32s *pValues, const Rpp32s *pLevels, Rpp32s nLevels, rppHandle_t rppHandle);
 #endif // GPU_SUPPORT
 
 /******************** tensor_table_lookup ********************/
@@ -244,6 +247,17 @@ RppStatus rppi_look_up_table_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcS
 // *retval RPP_ERROR : Error
 
 RppStatus rppi_tensor_look_up_table_u8_host(RppPtr_t srcPtr, RppPtr_t dstPtr, RppPtr_t lutPtr, Rpp32u tensorDimension, RppPtr_t tensorDimensionValues);
+
+#ifdef GPU_SUPPORT
+NppStatus nppiLUT_Linear_8u_C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, const Npp32s *pValues, const Npp32s *pLevels, int nLevels);
+#endif // GPU_SUPPORT
+
+#ifdef GPU_SUPPORT
+RppStatus rppi_CFAToRGB_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppiRect srcROI, RppPtr_t dstPtr, RppiBayerGridPosition rGrid, Rpp32u nbatchSize, rppHandle_t rppHandle);
+RppStatus rppi_CFAToRGB_u16_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppiRect srcROI, RppPtr_t dstPtr, RppiBayerGridPosition rGrid, Rpp32u nbatchSize, rppHandle_t rppHandle);
+NppStatus nppiCFAToRGB_8u_C1C3R_Ctx(const Npp8u * pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcROI, Npp8u * pDst, int nDstStep, NppiBayerGridPosition eGrid, NppiInterpolationMode eInterpolation, NppStreamContext nppStreamCtx);
+NppStatus nppiCFAToRGB_16u_C1C3R_Ctx(const Npp16u * pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcROI, Npp16u * pDst, int nDstStep, NppiBayerGridPosition eGrid, NppiInterpolationMode eInterpolation, NppStreamContext nppStreamCtx);
+#endif // GPU_SUPPORT
 
 /*! @}
  */

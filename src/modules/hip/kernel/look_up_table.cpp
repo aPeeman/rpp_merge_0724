@@ -248,3 +248,90 @@ RppStatus hip_exec_lut_batch_int8(Rpp8s *srcPtr, Rpp8s *dstPtr, Rpp8s* lut, rpp:
                        out_plnpkdind);
     return RPP_SUCCESS;
 }
+
+extern "C" __global__ void lut_linear_batch(unsigned char *input,
+                                     unsigned char *output,
+                                     unsigned int *height,
+                                     unsigned int *width,
+                                     unsigned int *max_width,
+                                     unsigned long long *batch_index,
+				     const int *pValues,
+				     const int *pLevels,
+				     int nLevels,
+                                     const unsigned int channel,
+                                     unsigned int *inc,               
+                                     const int in_pln_pkd_ind,
+                                     const int out_pln_pkd_ind) // use 1 pln 3 for pkd
+{
+    int id_x = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;
+
+    if (id_x < width[id_z] && id_y < height[id_z])
+    {
+        long in_pix_index = batch_index[id_z] + (id_x + id_y * max_width[id_z]) * in_pln_pkd_ind;
+        long out_pix_index = batch_index[id_z] + (id_x + id_y * max_width[id_z]) * out_pln_pkd_ind;
+        for (int indextmp = 0; indextmp < channel; indextmp++)
+        {
+            int outputValue = 0; 
+			
+	    if (input[in_pix_index] >= pLevels[0] && input[in_pix_index] <= pLevels[nLevels - 1]) {   
+		for (int i = 0; i < nLevels - 1; ++i) {  
+			if (input[in_pix_index] >= pLevels[i] && input[in_pix_index] < pLevels[i + 1]) {  
+				int levelRange = pLevels[i + 1] - pLevels[i];  
+				int valueRange = pValues[i + 1] - pValues[i];  
+				if (levelRange > 0) {
+					int t = (input[in_pix_index] - pLevels[i]) * valueRange / levelRange;  
+					outputValue = pValues[i] + t;  
+				} else {  
+					outputValue = pValues[i];
+				}  
+					break;  
+			}  
+		 }  
+	     } else if (input[in_pix_index] < pLevels[0]) {  
+			outputValue = pValues[0];
+	     } else {  
+			outputValue = pValues[nLevels - 1]; 
+	     }  
+ 
+	    output[out_pix_index] = saturate_8u(outputValue);
+            in_pix_index += inc[id_z];
+            out_pix_index += inc[id_z];
+        }
+    }
+}
+
+RppStatus npp_exec_lut_linear_batch(Rpp8u *srcPtr, Rpp8u *dstPtr, rpp::Handle& handle, Rpp32u channel, Rpp32s plnpkdind, 
+				Rpp32u max_height, Rpp32u max_width, const int *pValues, const int *pLevels, int nLevels)
+{
+    int localThreads_x = 32;
+    int localThreads_y = 32;
+    int localThreads_z = 1;
+    int globalThreads_x = (max_width + 31) & ~31;
+    int globalThreads_y = (max_height + 31) & ~31;
+    int globalThreads_z = handle.GetBatchSize();
+    const int inplnpkdind = plnpkdind;
+    const int outplnpkdind = plnpkdind;
+
+    hipLaunchKernelGGL(lut_linear_batch,
+                       dim3(ceil((float)globalThreads_x/localThreads_x), ceil((float)globalThreads_y/localThreads_y), ceil((float)globalThreads_z/localThreads_z)),
+                       dim3(localThreads_x, localThreads_y, localThreads_z),
+                       0,
+                       handle.GetStream(),
+                       srcPtr,
+		       dstPtr,
+                       handle.GetInitHandle()->mem.mgpu.srcSize.height,
+                       handle.GetInitHandle()->mem.mgpu.srcSize.width,
+                       handle.GetInitHandle()->mem.mgpu.maxSrcSize.width,
+                       handle.GetInitHandle()->mem.mgpu.srcBatchIndex,
+		       pValues,
+		       pLevels,
+		       nLevels,
+                       channel,
+                       handle.GetInitHandle()->mem.mgpu.inc,
+                       inplnpkdind,
+		       outplnpkdind);
+
+    return RPP_SUCCESS;
+}

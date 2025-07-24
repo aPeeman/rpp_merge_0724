@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef HIP_KERNELS_H
@@ -35,6 +37,7 @@ extern "C" __global__ void channel_combine_batch(unsigned char* input1, unsigned
 extern "C" __global__ void look_up_table_pkd(unsigned char* input, unsigned char* output, unsigned char* lutPtr, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void look_up_table_pln(unsigned char* input, unsigned char* output, unsigned char* lutPtr, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void look_up_table_batch(unsigned char* input, unsigned char* output, unsigned char* lutPtr, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+extern "C" __global__ void lut_linear_batch(unsigned char *input, unsigned char *output, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long long *batch_index, const int *pValues, const int *pLevels, int nLevels, const unsigned int channel, unsigned int *inc, const int in_pln_pkd_ind, const int out_pln_pkd_ind);
 extern "C" __global__ void tensor_look_up_table(const unsigned int tensorDimension, unsigned char* input, unsigned char* output, const unsigned int a, const unsigned int b, const unsigned int c, unsigned char* lutPtr);
 extern "C" __global__ void huergb_pkd(unsigned char *input, unsigned char *output, const  float hue, const  float sat, const unsigned int height, const unsigned int width);
 extern "C" __global__ void huergb_pln(unsigned char *input, unsigned char *output, const  float hue, const  float sat, const unsigned int height, const unsigned int width);
@@ -55,6 +58,8 @@ extern "C" __global__ void sobel_pkd(unsigned char* input, unsigned char* output
 extern "C" __global__ void sobel_pln(unsigned char* input, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel, const unsigned int sobelType);
 extern "C" __global__ void sobel_batch(unsigned char* input, unsigned char* output, unsigned int *sobelType, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void box_filter_batch(unsigned char* input, unsigned char* output, unsigned int *kernelSize, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+extern "C" __global__ void npp_box_filter_batch(unsigned char* input, unsigned char* output, unsigned int *kernelSize, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex, RppiPoint maskAnchor, RppiBorderType rBorderType);
+extern "C" __global__ void prewitt_batch(unsigned char *input, short *outputx, short *outputy, short *pDstMag, float *pDstAngle, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex, RppiBorderType borderType, RppiNorm norm);
 extern "C" __global__ void median_filter_pkd(unsigned char* input, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel, const unsigned int kernelSize);
 extern "C" __global__ void median_filter_pln(unsigned char* input, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel, const unsigned int kernelSize);
 extern "C" __global__ void median_filter_batch(unsigned char* input, unsigned char* output, unsigned int *kernelSize, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
@@ -77,7 +82,9 @@ extern "C" __global__ void bilateral_filter_planar(const unsigned char *input, u
 double distance(int x1, int y1, int x2, int y2);
 double gaussian(double x, double sigmaI);
 float gaussian(int x, int y, float stdDev);
-
+extern "C" __global__ void labelmarkers_batch(unsigned char *input, unsigned int *output, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, RppiNorm eNorm, unsigned long long *batch_index, const int plnpkdindex);
+extern "C" __global__ void compressmarkers_batch(unsigned int *input, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, RppBufferDescriptor* pBufferBatch, unsigned int* pNewMaxLabelID, int nPerImageBufferSize, unsigned long long *batch_index, const int plnpkdindex);
+extern "C" __global__ void compressmarkers(unsigned int *input, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, int* pNewNumber, int nStartingNumber, unsigned long long *batch_index, const int plnpkdindex);
 // geometry_transforms
 extern "C" __global__ void lenscorrection_pln(const unsigned char *input, unsigned char *output, const float strength, const float zoom, const float halfWidth, const float halfHeight, const float correctionRadius, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void lenscorrection_pkd(const unsigned char *input, unsigned char *output, const float strength, const float zoom, const float halfWidth, const float halfHeight, const float correctionRadius, const unsigned int height, const unsigned int width, const unsigned int channel);
@@ -91,7 +98,7 @@ extern "C" __global__ void flip_horizontal_packed(const unsigned char *input, un
 extern "C" __global__ void flip_bothaxis_planar(const unsigned char *input, unsigned char *output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void flip_vertical_planar(const unsigned char *input, unsigned char *output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void flip_horizontal_planar(const unsigned char *input, unsigned char *output, const unsigned int height, const unsigned int width, const unsigned int channel);
-extern "C" __global__ void flip_batch(unsigned char* srcPtr, unsigned char* dstPtr, unsigned int *flipAxis, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+// extern "C" __global__ void flip_batch(unsigned char* srcPtr, unsigned char* dstPtr, unsigned int *flipAxis, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void scale_batch(unsigned char* srcPtr, unsigned char* dstPtr, float* percentage, unsigned int *source_height, unsigned int *source_width, unsigned int *dest_height, unsigned int *dest_width, unsigned int *max_source_width, unsigned int *max_dest_width, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned long *source_batch_index, unsigned long *dest_batch_index, const unsigned int channel, unsigned int *source_inc, unsigned int *dest_inc, const int plnpkdindex);
 extern "C" __global__ void scale_pkd(unsigned char* srcPtr, unsigned char* dstPtr, const unsigned int source_height, const unsigned int source_width, const unsigned int dest_height, const unsigned int dest_width, const unsigned int channel, const unsigned int exp_dest_height, const unsigned int exp_dest_width);
 extern "C" __global__ void scale_pln(unsigned char* srcPtr, unsigned char* dstPtr, const unsigned int source_height, const unsigned int source_width, const unsigned int dest_height, const unsigned int dest_width, const unsigned int channel, const unsigned int exp_dest_height, const unsigned int exp_dest_width);
@@ -116,6 +123,7 @@ extern "C" __global__ void absolute_difference(unsigned char* input1, unsigned c
 extern "C" __global__ void magnitude_batch(unsigned char* input1, unsigned char* input2, unsigned char* output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void magnitude(unsigned char* input1, unsigned char* input2, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void multiply_batch(unsigned char* input1, unsigned char* input2, unsigned char* output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+extern "C" __global__ void div_batch(unsigned char* input1, unsigned char* input2, unsigned char* output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void multiply(unsigned char* input1, unsigned char* input2, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void phase_batch(unsigned char* input1, unsigned char* input2, unsigned char* output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void phase(unsigned char* input1, unsigned char* input2, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel);
@@ -129,6 +137,7 @@ extern "C" __global__ void accumulate_squared(unsigned char *input, const unsign
 extern "C" __global__ void accumulate_weighted(unsigned char *input1, unsigned char *input2, const double alpha, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void accumulate(unsigned char *input1, unsigned char *input2, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void add_batch(unsigned char *input1, unsigned char *input2, unsigned char *output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+extern "C" __global__ void add_32f_batch(float *input1, float *input2, float *output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void add(unsigned char *input1, unsigned char *input2, unsigned char *output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void subtract_batch(unsigned char *input1, unsigned char *input2, unsigned char *output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 extern "C" __global__ void subtract(unsigned char *a, unsigned char *b, unsigned char *c, const unsigned int height, const unsigned int width, const unsigned int channel);
@@ -145,6 +154,7 @@ extern "C" __global__ void dilate_batch(unsigned char* input, unsigned char* out
 // statistical_operations
 extern "C" __global__ void thresholding(unsigned char* input, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel, const unsigned char min, const unsigned char max);
 extern "C" __global__ void thresholding_batch(unsigned char* input, unsigned char* output, unsigned char *min, unsigned char *max, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
+extern "C" __global__ void comparec_batch(short *input, unsigned char *output, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex, short nConstant, RppCmpOp comop);
 extern "C" __global__ void min_hip(unsigned char* input1, unsigned char* input2, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel);
 extern "C" __global__ void min_batch(unsigned char* input1, unsigned char* input2, unsigned char* output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int  *inc, const int plnpkdindex);
 extern "C" __global__ void max_hip(unsigned char* input1, unsigned char* input2, unsigned char* output, const unsigned int height, const unsigned int width, const unsigned int channel);
@@ -205,6 +215,7 @@ extern "C" __global__ void tensor_matrix_multiply(unsigned char* input1, unsigne
 extern "C" __global__ void tensor_convert_bit_depth_u8s8(const unsigned int tensorDimension, unsigned char* input, char* output, const unsigned int a, const unsigned int b, const unsigned int c);
 extern "C" __global__ void tensor_convert_bit_depth_u8u16(const unsigned int tensorDimension, unsigned char* input, unsigned short* output, const unsigned int a, const unsigned int b, const unsigned int c);
 extern "C" __global__ void tensor_convert_bit_depth_u8s16(const unsigned int tensorDimension, unsigned char* input, short* output, const unsigned int a, const unsigned int b, const unsigned int c);
+extern "C" __global__ void copyborder_batch(const unsigned char *input, unsigned char *output, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned int *max_height, int oDstwidth, int oDstheight, int nTopBorderHeight, int nLeftBorderWidth, unsigned char nValue, unsigned long long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 
 // logical_operations
 extern "C" __global__ void bitwise_AND_batch(unsigned char *input1, unsigned char *input2, unsigned char *output, int *xroi_begin, int *xroi_end, int *yroi_begin, int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long *batch_index, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
@@ -287,6 +298,7 @@ extern "C" __global__ void partial_histogram_batch(unsigned char* input, unsigne
 extern "C" __global__ void partial_histogram_semibatch(unsigned char* input, unsigned int *histogramPartial, const unsigned int height, const unsigned int width, const unsigned int max_width, const unsigned long batch_index, const unsigned  int hist_index, const unsigned int channel, const unsigned int inc, const int plnpkdindex);
 extern "C" __global__ void partial_histogram_pkd(unsigned char *input, unsigned int *histogramPartial, const unsigned int width, const unsigned int height, const unsigned int channel);
 extern "C" __global__ void partial_histogram_pln(unsigned char *input, unsigned int *histogramPartial, const unsigned int width, const unsigned int height, const unsigned int channel);
+extern "C" __global__ void histogram_even_batch(unsigned char *input, unsigned int *xroi_begin, unsigned int *xroi_end, unsigned int *yroi_begin, unsigned int *yroi_end, unsigned int *height, unsigned int *width, unsigned int *max_width, unsigned long long *batch_index, int *pHist, int nLevels, int nLowerLevel, int nUpperLevel, const unsigned int channel, unsigned int *inc, const int plnpkdindex);
 __device__ unsigned int get_pkd_index(unsigned int id_x, unsigned int id_y, unsigned int id_z, unsigned int width, unsigned int height, unsigned channel);
 unsigned int get_pkd_index(unsigned int id_x, unsigned int id_y, unsigned int id_z, unsigned int width, unsigned int height, unsigned channel);
 __device__ unsigned int get_pln_index(unsigned int id_x, unsigned int id_y, unsigned int id_z, unsigned int width, unsigned int height, unsigned channel);
@@ -437,7 +449,7 @@ const std::map<std::string, const void*>& funMap1()
         {"flip_horizontal_packed", reinterpret_cast<const void*>(flip_horizontal_packed)},
         {"flip_vertical_packed", reinterpret_cast<const void*>(flip_vertical_packed)},
         {"flip_bothaxis_packed", reinterpret_cast<const void*>(flip_bothaxis_packed)},
-        {"flip_batch", reinterpret_cast<const void*>(flip_batch)},
+        // {"flip_batch", reinterpret_cast<const void*>(flip_batch)},     
         {"resize_pln", reinterpret_cast<const void*>(resize_pln)},
         {"resize_pkd", reinterpret_cast<const void*>(resize_pkd)},
         {"resize_batch", reinterpret_cast<const void*>(resize_batch)},

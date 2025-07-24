@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "hip_declarations.hpp"
@@ -127,6 +129,38 @@ box_filter_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnF
     max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
 
     hip_exec_box_filter_batch(srcPtr, dstPtr, handle, chnFormat, channel, plnpkdind, max_height, max_width);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+box_filter_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiPoint maskAnchor, RppiBorderType rBorderType)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_box_filter_batch(srcPtr, dstPtr, handle, chnFormat, channel, plnpkdind, max_height, max_width, maskAnchor, rBorderType);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+prewitt_filter_npp_batch(Rpp8u* srcPtr, Rpp16s* dstPtrx, Rpp16s* dstPtry, Rpp16s* pDstMag, Rpp32f* pDstAngle, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiNorm eNorm, RppiBorderType rBorderType)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_prewitt_filter_batch(srcPtr, dstPtrx, dstPtry, pDstMag, pDstAngle, handle, chnFormat, channel, plnpkdind, max_height, max_width, eNorm, rBorderType);
 
     return RPP_SUCCESS;
 }
@@ -359,6 +393,55 @@ custom_convolution_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, Rpp32f *kernel, RppiS
     max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
 
     hip_exec_custom_convolution_batch(srcPtr, dstPtr, handle, d_kernel, kernelSize, chnFormat, channel, plnpkdind, max_height, max_width);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+labelmarkers_npp_batch(Rpp8u* srcPtr, Rpp32u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, RppiNorm eNorm)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+	
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_labelmarkers_batch_batch(srcPtr, dstPtr, handle, plnpkdind, max_height, max_width, eNorm);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+compressmarkers_npp_batch(Rpp32u* srcPtr, rpp::Handle& handle, RppiChnFormat chnFormat, RppBufferDescriptor *pBufferBatch, Rpp32u *pNewMaxLabelID, Rpp32s nPerImageBufferSize)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_compressmarkers_batch_batch(srcPtr, handle, plnpkdind, max_height, max_width, pBufferBatch, pNewMaxLabelID, nPerImageBufferSize);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+compressmarkers_npp(Rpp32u* srcPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32s *pNewNumber, Rpp32s nStartingNumber)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_compressmarkers(srcPtr, handle, plnpkdind, max_height, max_width, pNewNumber, nStartingNumber);
 
     return RPP_SUCCESS;
 }

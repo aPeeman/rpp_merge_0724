@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef HIP_DECLARATIONS_H
@@ -26,6 +28,7 @@ THE SOFTWARE.
 #include "rpp.h"
 #include "rpp/handle.hpp"
 #include "rpp_hip_common.hpp"
+#include "rppdefs.h"
 
 // ===== Utils
 
@@ -145,6 +148,8 @@ RppStatus
 histogram_balance_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 histogram_balance_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+histogram_even_npp_batch(Rpp8u* srcPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, int *pHist, int nLevels, int nLowerLevel, int nUpperLevel);
 
 /******************** fused_functions ********************/
 
@@ -219,6 +224,8 @@ add_hip(Rpp8u* srcPtr1,Rpp8u* srcPtr2, RppiSize srcSize, Rpp8u* dstPtr, RppiChnF
 RppStatus
 add_hip_batch(Rpp8u* srcPtr1,Rpp8u* srcPtr2, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
 RppStatus
+add_hip32f_batch(Rpp32f* srcPtr1,Rpp32f* srcPtr2, Rpp32f* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
 subtract_hip(Rpp8u* srcPtr1,Rpp8u* srcPtr2, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 subtract_hip_batch(Rpp8u* srcPtr1,Rpp8u* srcPtr2, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
@@ -234,6 +241,8 @@ RppStatus
 multiply_hip(Rpp8u* srcPtr1,Rpp8u* srcPtr2, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 multiply_hip_batch(Rpp8u* srcPtr1,Rpp8u* srcPtr2, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+div_hip_batch(Rpp8u* srcPtr1,Rpp8u* srcPtr2, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
 RppStatus
 accumulate_squared_hip(Rpp8u* srcPtr, RppiSize srcSize, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
@@ -292,7 +301,12 @@ RppStatus
 look_up_table_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr,Rpp8u* lutPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 look_up_table_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, Rpp8u* lutPtr,rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
-
+RppStatus
+lut_linear_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, const int *pValues, const int *pLevels, int nLevels);
+RppStatus 
+cfarorgb_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiRect srcROI, RppiBayerGridPosition rGrid);
+RppStatus 
+cfarorgb_hip_batch_16u(Rpp16u* srcPtr, Rpp16u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiRect srcROI, RppiBayerGridPosition rGrid);
 /******************** filter_functions ********************/
 
 RppStatus
@@ -303,6 +317,10 @@ RppStatus
 box_filter_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, Rpp32u kernelSize, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 box_filter_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+box_filter_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiPoint maskAnchor, RppiBorderType rBorderType);
+RppStatus
+prewitt_filter_npp_batch(Rpp8u* srcPtr, Rpp16s* dstPtrx, Rpp16s* dstPtry, Rpp16s* pDstMag, Rpp32f* pDstAngle, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiNorm eNorm, RppiBorderType rBorderType);
 RppStatus
 median_filter_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, Rpp32u kernelSize, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
@@ -321,7 +339,12 @@ RppStatus
 gaussian_filter_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle&handle, RppiChnFormat chnFormat, unsigned int channel);
 RppStatus
 custom_convolution_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, Rpp32f *kernel, RppiSize KernelSize, rpp::Handle& handle,RppiChnFormat chnFormat, unsigned int channel);
-
+RppStatus
+labelmarkers_npp_batch(Rpp8u* srcPtr, Rpp32u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, RppiNorm eNorm);
+RppStatus
+compressmarkers_npp_batch(Rpp32u* srcPtr, rpp::Handle& handle, RppiChnFormat chnFormat, RppBufferDescriptor *pBufferBatch, Rpp32u *pNewMaxLabelID, Rpp32s nPerImageBufferSize);
+RppStatus
+compressmarkers_npp(Rpp32u* srcPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32s *pNewNumber, Rpp32s nStartingNumber);
 /******************** morphological_transforms ********************/
 
 RppStatus
@@ -339,6 +362,12 @@ RppStatus
 flip_hip(Rpp8u *srcPtr, RppiSize srcSize, Rpp8u *dstPtr, uint flipAxis, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 flip_hip_batch(Rpp8u * srcPtr, Rpp8u * dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+flip_hip_batch_s32(Rpp32s *srcPtr, Rpp32s *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+flip_hip_batch_f32(Rpp32f *srcPtr, Rpp32f *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+flip_hip_batch_u16(Rpp16u *srcPtr, Rpp16u *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
 RppStatus
 resize_hip(Rpp8u * srcPtr, RppiSize srcSize, Rpp8u * dstPtr, RppiSize dstSize, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
@@ -423,6 +452,8 @@ thresholding_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, Rpp8u min, Rpp8
 RppStatus
 thresholding_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
 RppStatus
+comparec_npp_batch(Rpp16s* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, Rpp16s nConstant, RppCmpOp rComparisonOperation);
+RppStatus
 min_hip(Rpp8u* srcPtr1,Rpp8u* srcPtr2, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 min_hip_batch(Rpp8u* srcPtr1,Rpp8u* srcPtr2, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
@@ -449,6 +480,8 @@ RppStatus
 data_object_copy_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
 data_object_copy_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
+RppStatus
+copyborder_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, int oDstwidth, int oDstheight, int nTopBorderHeight, int nLeftBorderWidth, Rpp8u nValue);
 RppStatus
 local_binary_pattern_hip(Rpp8u* srcPtr, RppiSize srcSize, Rpp8u* dstPtr, RppiChnFormat chnFormat, unsigned int channel, rpp::Handle& handle);
 RppStatus
@@ -501,6 +534,8 @@ template <typename T, typename U>
 RppStatus
 convert_bit_depth_hip_batch(T* srcPtr, U* dstPtr, Rpp32u type,rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel);
 
+NppStatus nppiScale_8u16s_C3R(const Npp8u *pSrc, int nSrcStep, Npp16s *pDst, int nDstStep, NppiSize oSizeROI);
+
 /******************** tensor_functions ********************/
 
 RppStatus
@@ -516,5 +551,7 @@ RppStatus
 tensor_convert_bit_depth_hip(Rpp32u tensorDimension, Rpp32u* tensorDimensionValues, T* srcPtr, U* dstPtr, Rpp32u type, rpp::Handle& handle);
 RppStatus
 tensor_look_up_table_hip(Rpp32u tensorDimension, Rpp32u* tensorDimensionValues, Rpp8u* srcPtr, Rpp8u* dstPtr, Rpp8u* lutPtr, rpp::Handle& handle);
+
+
 
 #endif // HIP_DECLARATIONS_H

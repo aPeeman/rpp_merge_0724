@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rpp_test_suite_common.h"
@@ -37,6 +39,8 @@ std::map<int, string> audioAugmentationMap =
     {0, "non_silent_region_detection"},
     {1, "to_decibels"},
     {2, "pre_emphasis_filter"},
+    {3, "down_mixing"},
+    {6, "resample"}
 };
 
 // Golden outputs for Non Silent Region Detection
@@ -135,7 +139,7 @@ void verify_output(Rpp32f *dstPtr, RpptDescPtr dstDescPtr, RpptImagePatchPtr dst
     // read data from golden outputs
     Rpp64u oBufferSize = dstDescPtr->n * dstDescPtr->strides.nStride;
     Rpp32f *refOutput = static_cast<Rpp32f *>(malloc(oBufferSize * sizeof(float)));
-    string outFile = scriptPath + testCase + "/" + testCase + ".bin";
+    string outFile = scriptPath + "/../REFERENCE_OUTPUTS_AUDIO/" + testCase + "/" + testCase + ".bin";
     std::fstream fin(outFile, std::ios::in | std::ios::binary);
     if(fin.is_open())
     {
@@ -252,4 +256,39 @@ void verify_non_silent_region_detection(float *detectedIndex, float *detectionLe
         qaResults << status << std::endl;
         qaResults.close();
     }
+}
+
+inline Rpp32f sinc(Rpp32f x)
+{
+    x *= M_PI;
+    return (std::abs(x) < 1e-5f) ? (1.0f - x * x * (1.0f / 6)) : std::sin(x) / x;
+}
+
+inline Rpp64f hann(Rpp64f x)
+{
+    return 0.5 * (1 + std::cos(x * M_PI));
+}
+
+// initialization function used for filling the values in Resampling window (RpptResamplingWindow)
+// using the coeffs and lobes value this function generates a LUT (look up table) which is further used in Resample audio augmentation
+inline void windowed_sinc(RpptResamplingWindow &window, Rpp32s coeffs, Rpp32s lobes)
+{
+    Rpp32f scale = 2.0f * lobes / (coeffs - 1);
+    Rpp32f scale_envelope = 2.0f / coeffs;
+    window.coeffs = coeffs;
+    window.lobes = lobes;
+    window.lookup.clear();
+    window.lookup.resize(coeffs + 5);
+    window.lookupSize = window.lookup.size();
+    Rpp32s center = (coeffs - 1) * 0.5f;
+    for (int i = 0; i < coeffs; i++) {
+        Rpp32f x = (i - center) * scale;
+        Rpp32f y = (i - center) * scale_envelope;
+        Rpp32f w = sinc(x) * hann(y);
+        window.lookup[i + 1] = w;
+    }
+    window.center = center + 1;
+    window.scale = 1 / scale;
+    window.pCenter = _mm_set1_ps(window.center);
+    window.pScale = _mm_set1_ps(window.scale);
 }

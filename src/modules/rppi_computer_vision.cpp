@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -1764,6 +1766,49 @@ rppi_canny_edge_detector_u8_pln1_batchPD_gpu(RppPtr_t srcPtr,
     return RPP_SUCCESS;
 }
 
+NppStatus nppiFilterCannyBorderGetBufferSize(NppiSize oSizeROI, int *nBufferSize) { 
+    if (nBufferSize == NULL) { 
+        return NPP_NULL_POINTER_ERROR; 
+    } 
+    int bufferSize = oSizeROI.width  * oSizeROI.height  * sizeof(Npp8u); 
+ 
+    *nBufferSize = bufferSize; 
+ 
+    return NPP_SUCCESS; 
+} 
+
+NppStatus 
+nppiFilterCannyBorder_8u_C1R(const Npp8u * pSrc, int nSrcStep, NppiSize oSrcSize, NppiPoint oSrcOffset, Npp8u * pDst, int nDstStep, NppiSize oSizeROI, NppiDifferentialKernel eFilterType, NppiMaskSize eMaskSize, Npp16s nLowThreshold, Npp16s nHighThreshold, NppiNorm eNorm, NppiBorderType eBorderType, Npp8u * pDeviceBuffer)
+{
+        if(eFilterType != NPP_FILTER_SOBEL || eMaskSize != NPP_MASK_SIZE_3_X_3 || eNorm != nppiNormL2)
+		return(hipRppStatusTocudaNppStatus(RPP_ERROR_INVALID_ARGUMENTS)); 
+	    int noOfImages = 1;
+        int ip_channel = 1;
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSrcSize.width;
+        maxSize.height = oSrcSize.height;
+
+	    Rpp8u rLowThreshold = (Rpp8u)nLowThreshold;
+        Rpp8u rHighThreshold = (Rpp8u)nHighThreshold;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        RppStatus status;
+        status = rppi_canny_edge_detector_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &rLowThreshold, &rHighThreshold, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
 RppStatus
 rppi_canny_edge_detector_u8_pln3_batchPD_gpu(RppPtr_t srcPtr,
                                              RppiSize *srcSize,
@@ -2574,6 +2619,74 @@ rppi_convert_bit_depth_u8s16_pkd3_batchPD_gpu(RppPtr_t srcPtr,
 #endif //BACKEND
 
     return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_copyborder_u8_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                                    RppiSize *srcSize,
+				                    RppiSize maxSrcSize,
+                                    RppPtr_t dstPtr,
+                                    Rpp32s nTopBorderHeight,
+                                    Rpp32s nLeftBorderWidth,
+				                    int oDstwidth,
+				                    int oDstheight,
+				                    Rpp8u nValue,
+                                    Rpp32u nbatchSize,
+                                    rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+
+    copyborder_npp_batch(static_cast<Rpp8u*>(srcPtr),
+                        static_cast<Rpp8u*>(dstPtr),
+                        rpp::deref(rppHandle),
+                        RPPI_CHN_PLANAR,
+                        1,
+			            oDstwidth,
+			            oDstheight,
+			            nTopBorderHeight,
+                        nLeftBorderWidth,
+			            nValue);
+
+    return RPP_SUCCESS;
+}
+
+NppStatus nppiCopyConstBorder_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSrcSizeROI, Npp8u *pDst, int nDstStep, NppiSize oDstSizeROI, 
+				int nTopBorderHeight, int nLeftBorderWidth, Npp8u nValue)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSrcSizeROI.width;
+        srcSize->height = oSrcSizeROI.height;
+        maxSize.width  = oDstSizeROI.width;
+        maxSize.height = oDstSizeROI.height;
+        int oDstwidth = oDstSizeROI.width;
+        int oDstheight = oDstSizeROI.height;
+
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        RppStatus status;
+        status = rppi_copyborder_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, nTopBorderHeight, nLeftBorderWidth, oDstwidth, oDstheight, nValue, noOfImages, handle);
+
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
 }
 
 #endif // GPU_SUPPORT

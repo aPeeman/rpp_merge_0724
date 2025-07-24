@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPI_STATISTICAL_OPERATIONS_H
@@ -206,6 +208,10 @@ RppStatus rppi_mean_stddev_u8_pln3_gpu(RppPtr_t srcPtr, RppiSize srcSize, Rpp32f
 RppStatus rppi_mean_stddev_u8_pkd3_gpu(RppPtr_t srcPtr, RppiSize srcSize, Rpp32f *mean, Rpp32f *stddev, rppHandle_t rppHandle);
 #endif // GPU_SUPPORT
 
+#ifdef GPU_SUPPORT
+RppStatus rppi_comparec_16s_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, RppPtr_t dstPtr, Rpp16s nConstant, Rpp32u nbatchSize, RppCmpOp rComparisonOperation, rppHandle_t rppHandle);
+#endif // GPU_SUPPORT
+
 /******************** histogram ********************/
 
 // Computes the histogram of an image
@@ -222,6 +228,16 @@ RppStatus rppi_mean_stddev_u8_pkd3_gpu(RppPtr_t srcPtr, RppiSize srcSize, Rpp32f
 RppStatus rppi_histogram_u8_pln1_host(RppPtr_t srcPtr, RppiSize srcSize, Rpp32u* outputHistogram, Rpp32u bins, rppHandle_t rppHandle);
 RppStatus rppi_histogram_u8_pln3_host(RppPtr_t srcPtr, RppiSize srcSize, Rpp32u* outputHistogram, Rpp32u bins, rppHandle_t rppHandle);
 RppStatus rppi_histogram_u8_pkd3_host(RppPtr_t srcPtr, RppiSize srcSize, Rpp32u* outputHistogram, Rpp32u bins, rppHandle_t rppHandle);
+
+#ifdef GPU_SUPPORT
+RppStatus rppi_histogram_even_u8_pln1_batchPD_gpu(RppPtr_t srcPtr, RppiSize *srcSize, RppiSize maxSrcSize, Rpp32u nbatchSize, Rpp32s *pHist, int nLevels, Rpp32s nLowerLevel, Rpp32s nUpperLevel, rppHandle_t rppHandle);
+NppStatus nppiHistogramEven_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSizeROI, Npp32s *pHist, int nLevels, Npp32s nLowerLevel, Npp32s nUpperLevel, Npp8u *pBuffer);
+NppStatus nppiCompareC_16s_C1R(const Npp16s *pSrc, int nSrcStep, const Npp16s nConstant, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, NppCmpOp eComparisonOperation);
+NppStatus nppiHistogramEvenGetBufferSize_8u_C1R(NppiSize oSizeROI, int nLevels, int *hpBufferSize);
+NppStatus nppiEvenLevelsHost_32s(Npp32s *hpLevels, int nLevels, Npp32s nLowerLevel, Npp32s nUpperLevel);
+NppStatus nppiMean_StdDev_8u_C1R_Ctx(const Npp8u *pSrc, int nSrcStep, NppiSize oSizeROI, Npp8u *pDeviceBuffer, Npp64f *pMean, Npp64f *pStdDev, NppStreamContext nppStreamCtx);
+NppStatus nppiMean_StdDev_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSizeROI, Npp8u *pDeviceBuffer, Npp64f *pMean, Npp64f *pStdDev);
+#endif // GPU_SUPPORT
 
 /*! @}
  */

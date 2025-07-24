@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -1581,4 +1583,249 @@ rppi_look_up_table_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr,
     return RPP_SUCCESS;
 }
 
+
+RppStatus
+rppi_lut_linear_u8_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                             RppiSize *srcSize,
+                             RppiSize maxSrcSize,
+			     RppPtr_t dstPtr,
+                             Rpp32u nbatchSize,
+			     const Rpp32s *pValues,
+			     const Rpp32s *pLevels,
+			     Rpp32s nLevels,
+                             rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+
+    lut_linear_npp_batch(static_cast<Rpp8u*>(srcPtr),
+			             static_cast<Rpp8u*>(dstPtr),	
+			             rpp::deref(rppHandle),
+                         RPPI_CHN_PLANAR,
+                         1,
+			             pValues,
+			             pLevels,
+			             nLevels);
+    return RPP_SUCCESS;
+}
+
+NppStatus nppiLUT_Linear_8u_C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, const Npp32s *pValues, const Npp32s *pLevels, int nLevels)
+{
+	int noOfImages = 1;
+    int ip_channel = 1;
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oSizeROI.width;
+    srcSize->height = oSizeROI.height;
+    maxSize.width  = oSizeROI.width;
+    maxSize.height = oSizeROI.height;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RppStatus status;
+    status = rppi_lut_linear_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, noOfImages, pValues, pLevels, nLevels, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+
+RppStatus
+rppi_CFAToRGB_u8_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                                  RppiSize *srcSize,
+                                  RppiSize maxSrcSize,
+								  RppiRect srcROI,
+                                  RppPtr_t dstPtr,
+                                  RppiBayerGridPosition rGrid,
+                                  Rpp32u nbatchSize,
+                                  rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+
+    cfarorgb_hip_batch(static_cast<Rpp8u*>(srcPtr),
+                       static_cast<Rpp8u*>(dstPtr),
+                       rpp::deref(rppHandle),
+                       RPPI_CHN_PLANAR,
+                       1,
+					   srcROI,
+					   rGrid);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_CFAToRGB_u16_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                                  RppiSize *srcSize,
+                                  RppiSize maxSrcSize,
+								  RppiRect srcROI,
+                                  RppPtr_t dstPtr,
+                                  RppiBayerGridPosition rGrid,
+                                  Rpp32u nbatchSize,
+                                  rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+
+    cfarorgb_hip_batch_16u(static_cast<Rpp16u*>(srcPtr),
+                       static_cast<Rpp16u*>(dstPtr),
+                       rpp::deref(rppHandle),
+                       RPPI_CHN_PLANAR,
+                       1,
+					   srcROI,
+					   rGrid);
+
+    return RPP_SUCCESS;
+}
+
+NppStatus nppiCFAToRGB_8u_C1C3R_Ctx(const Npp8u * pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcROI, 
+                                Npp8u * pDst, int nDstStep, NppiBayerGridPosition eGrid, NppiInterpolationMode eInterpolation, NppStreamContext nppStreamCtx)
+{
+	int noOfImages = 1;
+    // --- 1. Allocate device buffers ---
+    Rpp8u *d_src = nullptr, *d_dst = nullptr;
+    size_t srcBytes = oSrcSize.height * nSrcStep * sizeof(Npp8u);
+    size_t dstBytes = oSrcSize.height * nDstStep * sizeof(Npp8u);
+
+    hipMalloc(&d_src, srcBytes);
+    hipMalloc(&d_dst, dstBytes);
+
+    // --- 2. Copy host→device ---
+    hipMemcpy(d_src, pSrc, srcBytes, hipMemcpyHostToDevice);
+
+
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+	RppiRect srcROI;
+	RppiBayerGridPosition rGrid;
+    srcSize->width  = oSrcROI.width;
+    srcSize->height = oSrcROI.height;
+    maxSize.width  = oSrcSize.width;
+    maxSize.height = oSrcSize.height;
+	srcROI.x = oSrcROI.x;
+	srcROI.y = oSrcROI.y;
+	srcROI.width = oSrcROI.width;
+	srcROI.height = oSrcROI.height;
+	
+	if(eGrid == NPPI_BAYER_BGGR){
+        rGrid = RPPI_BAYER_BGGR;
+    } else if(eGrid == NPPI_BAYER_RGGB) {
+        rGrid = RPPI_BAYER_RGGB;
+    } else if(eGrid == NPPI_BAYER_GBRG) {
+        rGrid = RPPI_BAYER_GBRG;
+    } else if(eGrid == NPPI_BAYER_GRBG) {
+        rGrid = RPPI_BAYER_GRBG;
+    }
+    
+	RppStatus status;
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    status = rppi_CFAToRGB_u8_pln1_batchPD_gpu((RppPtr_t)d_src, srcSize, maxSize, srcROI, (RppPtr_t)d_dst, rGrid, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    // --- 4. Copy device→host ---
+    hipMemcpy(pDst, d_dst, dstBytes, hipMemcpyDeviceToHost);
+
+    // --- 5. Free device memory ---
+    hipFree(d_src);
+    hipFree(d_dst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiCFAToRGB_16u_C1C3R_Ctx(const Npp16u * pSrc, int nSrcStep, NppiSize oSrcSize, NppiRect oSrcROI, 
+                                Npp16u * pDst, int nDstStep, NppiBayerGridPosition eGrid, NppiInterpolationMode eInterpolation, NppStreamContext nppStreamCtx)
+{
+	int noOfImages = 1;
+    // --- 1. Allocate device buffers ---
+    Rpp16u *d_src = nullptr, *d_dst = nullptr;
+    size_t srcBytes = static_cast<size_t>(oSrcSize.height) * nSrcStep;
+    size_t dstBytes = static_cast<size_t>(oSrcSize.height) * nDstStep;
+
+    hipMalloc(&d_src, srcBytes);
+    hipMalloc(&d_dst, dstBytes);
+
+    // --- 2. Copy host→device ---
+    hipMemcpy(d_src, pSrc, srcBytes, hipMemcpyHostToDevice);
+
+
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+	RppiRect srcROI;
+	RppiBayerGridPosition rGrid;
+    srcSize->width  = oSrcROI.width;
+    srcSize->height = oSrcROI.height;
+    maxSize.width  = oSrcSize.width;
+    maxSize.height = oSrcSize.height;
+	srcROI.x = oSrcROI.x;
+	srcROI.y = oSrcROI.y;
+	srcROI.width = oSrcROI.width;
+	srcROI.height = oSrcROI.height;
+	
+	if(eGrid == NPPI_BAYER_BGGR){
+        rGrid = RPPI_BAYER_BGGR;
+    } else if(eGrid == NPPI_BAYER_RGGB) {
+        rGrid = RPPI_BAYER_RGGB;
+    } else if(eGrid == NPPI_BAYER_GBRG) {
+        rGrid = RPPI_BAYER_GBRG;
+    } else if(eGrid == NPPI_BAYER_GRBG) {
+        rGrid = RPPI_BAYER_GRBG;
+    }
+    
+	RppStatus status;
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    status = rppi_CFAToRGB_u16_pln1_batchPD_gpu((RppPtr_t)d_src, srcSize, maxSize, srcROI, (RppPtr_t)d_dst, rGrid, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    // --- 4. Copy device→host ---
+    hipMemcpy(pDst, d_dst, dstBytes, hipMemcpyDeviceToHost);
+
+    // --- 5. Free device memory ---
+    hipFree(d_src);
+    hipFree(d_dst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
 #endif // GPU_SUPPORT

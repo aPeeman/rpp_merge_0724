@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,20 +10,21 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "hip_declarations.hpp"
 #include "kernel/rpp_hip_host_decls.hpp"
+#include "rppdefs.h"
 
 /******************** data_object_copy ********************/
 
@@ -1552,6 +1555,42 @@ convert_bit_depth_hip(T* srcPtr, RppiSize srcSize, U* dstPtr, Rpp32u type, RppiC
     return RPP_SUCCESS;
 }
 
+/*NppStatus nppiScale_8u16s_C3R(const Npp8u *pSrc, int nSrcStep, Npp16s *pDst, int nDstStep, NppiSize oSizeROI)
+{
+        int noOfImages = 1;
+        int channel = 3;
+	RppiChnFormat chnFormat = RPPI_CHN_PACKED;
+	Rpp32u type = 3;
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        //maxSize.width  = oSizeROI.width;
+        //maxSize.height = oSizeROI.height;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+        clock_t start, end;
+        double gpu_time_used;
+
+        RppStatus status;
+        start = clock();
+	status = convert_bit_depth_hip((unsigned char*)pSrc, srcSize, (short*)pDst, type, chnFormat, channel, handle);
+        hipDeviceSynchronize();
+        end = clock();
+
+        printf("\nnppiScale_8u16s_C3R is %d\n", status);
+        gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        std::cout << "\nGPU Convert_8u16s -  : " << gpu_time_used;
+        printf("\n");
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}*/
+
 template <typename T, typename U>
 RppStatus
 convert_bit_depth_hip_batch(T* srcPtr, U* dstPtr, Rpp32u type,rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel)
@@ -1687,5 +1726,21 @@ RppStatus
 remap_hip_batch(Rpp8u *srcPtr, Rpp8u* dstPtr, Rpp32u* rowRemapTable, Rpp32u* colRemapTable,
          rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel)
 {
+    return RPP_SUCCESS;
+}
+
+RppStatus
+copyborder_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, int oDstwidth, int oDstheight, int nTopBorderHeight, int nLeftBorderWidth, Rpp8u nValue)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_copyborder_batch(srcPtr, dstPtr, handle, chnFormat, channel, plnpkdind, max_height, max_width, oDstwidth, oDstheight, nTopBorderHeight, nLeftBorderWidth, nValue);
+
     return RPP_SUCCESS;
 }

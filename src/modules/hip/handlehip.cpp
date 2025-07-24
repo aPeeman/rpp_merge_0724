@@ -1,28 +1,26 @@
-/*******************************************************************************
- *
- * MIT License
- *
- * Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- *******************************************************************************/
+/*
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -192,7 +190,7 @@ struct HandleImpl
         }
 
         this->initHandle->mem.mcpu.rgbArr.rgbmem = (RpptRGB *)malloc(sizeof(RpptRGB) * this->nBatchSize);
-        this->initHandle->mem.mcpu.tempFloatmem = (Rpp32f *)malloc(sizeof(Rpp32f) * 99532800 * this->nBatchSize); // 7680 * 4320 * 3
+        this->initHandle->mem.mcpu.scratchBufferHost = (Rpp32f *)malloc(sizeof(Rpp32f) * 99532800 * this->nBatchSize); // 7680 * 4320 * 3
     }
 
     void PreInitializeBuffer()
@@ -241,7 +239,7 @@ struct HandleImpl
         }
 
         hipMalloc(&(this->initHandle->mem.mgpu.rgbArr.rgbmem), sizeof(RpptRGB) * this->nBatchSize);
-        hipMalloc(&(this->initHandle->mem.mgpu.maskArr.floatmem), sizeof(Rpp32f) * 8294400);    // 3840 x 2160
+        hipMalloc(&(this->initHandle->mem.mgpu.scratchBufferHip.floatmem), sizeof(Rpp32f) * 8294400);    // 3840 x 2160
     }
 };
 
@@ -358,7 +356,7 @@ void Handle::rpp_destroy_object_gpu()
     }
 
     hipFree(this->GetInitHandle()->mem.mgpu.rgbArr.rgbmem);
-    hipFree(this->GetInitHandle()->mem.mgpu.maskArr.floatmem);
+    hipFree(this->GetInitHandle()->mem.mgpu.scratchBufferHip.floatmem);
 }
 
 void Handle::rpp_destroy_object_host()
@@ -383,7 +381,7 @@ void Handle::rpp_destroy_object_host()
     }
 
     free(this->GetInitHandle()->mem.mcpu.rgbArr.rgbmem);
-    free(this->GetInitHandle()->mem.mcpu.tempFloatmem);
+    free(this->GetInitHandle()->mem.mcpu.scratchBufferHost);
 }
 
 size_t Handle::GetBatchSize() const

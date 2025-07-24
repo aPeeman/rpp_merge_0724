@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -355,6 +357,222 @@ rppi_erode_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr,
 #endif //BACKEND
 
     return RPP_SUCCESS;
+}
+
+NppStatus nppiErode_8u_C3R(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_erode_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiErode_8u_C1R_Ctx(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_erode_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+ 
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiErode_8u_C1R(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_erode_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiErode_8u_C3R_Ctx(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_erode_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiDilate_8u_C3R(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+	    RppStatus status;
+		
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+	    status = rppi_dilate_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiDilate_8u_C1R_Ctx(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_dilate_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiDilate_8u_C1R(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_dilate_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiDilate_8u_C3R_Ctx(const Npp8u *pSrc, Npp32s nSrcStep, Npp8u *pDst, Npp32s nDstStep, NppiSize oSizeROI, const Npp8u *pMask, NppiSize oMaskSize, NppiPoint oAnchor, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+        Rpp32u kernelSize = oMaskSize.width;
+        RppStatus status;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_dilate_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &kernelSize, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
 }
 
 /******************** dilate ********************/

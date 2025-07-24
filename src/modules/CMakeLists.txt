@@ -1,22 +1,26 @@
-# Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+#[[
+MIT License
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+]]
 
 project(modules)
 
@@ -27,7 +31,7 @@ elseif( "${BACKEND}" STREQUAL "OCL")
 endif()
 
 list(APPEND Rpp_Source ${PROJECT_BINARY_DIR}/rpp_kernels.h)
-message("-- ${Green}${PROJECT_NAME} -- Adding custom commands to rpp_kernels${ColourReset}")
+#message("-- ${Green}${PROJECT_NAME} -- Adding custom commands to rpp_kernels${ColourReset}")
 add_custom_command(
     OUTPUT ${PROJECT_BINARY_DIR}/rpp_kernels.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -87,7 +91,7 @@ if( "${BACKEND}" STREQUAL "HIP")
     file(GLOB MOD_HIP_CPP "hip/*.cpp" )
     file(GLOB MOD_HIP_CPP_KERNELS "hip/kernel/*.cpp" )
     list(APPEND Rpp_Source ${CPPFILES} ${MOD_HIP_CPP} ${MOD_HIP_CPP_KERNELS})
-    message("-- ${Green}HIP kernels added${ColourReset}")
+    #message("-- ${Green}HIP kernels added${ColourReset}")
 
     # Set HIP compiler and flags
     set(CMAKE_CXX_COMPILER ${COMPILER_FOR_HIP})
@@ -105,7 +109,7 @@ elseif( "${BACKEND}" STREQUAL "OCL")
     # Add OpenCL kernels
     file(GLOB MOD_CL_CPP "cl/*.cpp" )
     list(APPEND Rpp_Source ${CPPFILES} ${MOD_CL_CPP})
-    message("-- ${Green}OpenCL kernels added!${ColourReset}")
+    #message("-- ${Green}OpenCL kernels added!${ColourReset}")
     set_source_files_properties(rppt_tensor_audio_augmentations.cpp PROPERTIES COMPILE_FLAGS -mno-fma)
 
     # Add OpenCL specific preprocessor flags
@@ -122,7 +126,7 @@ elseif( "${BACKEND}" STREQUAL "CPU")
     set(INCLUDE_LIST ${CMAKE_SOURCE_DIR}/src/include/common/)
     set_source_files_properties(rppt_tensor_audio_augmentations.cpp PROPERTIES COMPILE_FLAGS -mno-fma)
 endif()
-message("-- ${White}AMD RPP ${PROJECT_NAME} -- Include Directories:${INCLUDE_LIST}${ColourReset}")
+#message("-- ${White}AMD RPP ${PROJECT_NAME} -- Include Directories:${INCLUDE_LIST}${ColourReset}")
 add_compile_options("-Wno-unused-result")
 
 # Kernels and includes additions

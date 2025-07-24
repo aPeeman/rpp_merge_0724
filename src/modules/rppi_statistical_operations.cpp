@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -1519,6 +1521,222 @@ rppi_histogram_u8_pkd3_gpu(RppPtr_t srcPtr,
     #endif //BACKEND
 
     return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_comparec_16s_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                                   RppiSize *srcSize,
+                                   RppiSize maxSrcSize,
+                                   RppPtr_t dstPtr,
+                                   Rpp16s nConstant,
+                                   Rpp32u nbatchSize,
+				                   RppCmpOp rComparisonOperation,
+                                   rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    Rpp32u paramIndex = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+    //copy_param_uchar(nConstant, rpp::deref(rppHandle), paramIndex++);
+
+    comparec_npp_batch(static_cast<Rpp16s*>(srcPtr),
+                       static_cast<Rpp8u*>(dstPtr),
+                       rpp::deref(rppHandle),
+                       RPPI_CHN_PLANAR,
+                       1,
+		               nConstant,
+		               rComparisonOperation);
+
+    return RPP_SUCCESS;
+}
+
+NppStatus nppiCompareC_16s_C1R(const Npp16s *pSrc, int nSrcStep, const Npp16s nConstant, Npp8u *pDst, int nDstStep, NppiSize oSizeROI, NppCmpOp eComparisonOperation)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+	    RppCmpOp rComparisonOperation;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+		
+	    if(eComparisonOperation == NPP_CMP_LESS){
+            rComparisonOperation = RPP_CMP_LESS;
+        } else if(eComparisonOperation == NPP_CMP_LESS_EQ) {
+            rComparisonOperation = RPP_CMP_LESS_EQ;
+        } else if(eComparisonOperation == NPP_CMP_EQ) {
+            rComparisonOperation = RPP_CMP_EQ;
+        } else if(eComparisonOperation == NPP_CMP_GREATER_EQ) {
+            rComparisonOperation = RPP_CMP_GREATER_EQ;
+        } else if(eComparisonOperation == NPP_CMP_GREATER) {
+            rComparisonOperation = RPP_CMP_GREATER;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        RppStatus status;
+        status = rppi_comparec_16s_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, nConstant, noOfImages, rComparisonOperation, handle);
+
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiHistogramEvenGetBufferSize_8u_C1R(NppiSize oSizeROI, int nLevels, int *hpBufferSize)
+{  
+    const int histogramSize = nLevels;  
+    
+    int histogramBufferSize = histogramSize * sizeof(int);
+    
+    *hpBufferSize = histogramBufferSize + sizeof(int) * histogramSize;
+
+    return NPP_SUCCESS;
+}  
+
+NppStatus nppiEvenLevelsHost_32s(Npp32s *hpLevels, int nLevels, Npp32s nLowerLevel, Npp32s nUpperLevel)
+{  
+    if (nLevels <= 0) {  
+        return NPP_HISTOGRAM_NUMBER_OF_LEVELS_ERROR;  
+    }  
+ 
+    Npp32s range = nUpperLevel - nLowerLevel;  
+
+    Npp32s step = range / (nLevels - 1);  
+
+    for (int i = 0; i < nLevels; i++) {  
+        hpLevels[i] = nLowerLevel + i * step;  
+    }  
+
+    hpLevels[nLevels - 1] = nUpperLevel;  
+    return NPP_SUCCESS;
+}  
+
+RppStatus
+rppi_histogram_even_u8_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                             RppiSize *srcSize,
+                             RppiSize maxSrcSize,
+                             Rpp32u nbatchSize,
+			                 Rpp32s *pHist,
+			                 Rpp32s nLevels,
+			                 Rpp32s nLowerLevel,
+			                 Rpp32s nUpperLevel,
+                             rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+
+    histogram_even_npp_batch(static_cast<Rpp8u*>(srcPtr),
+			                 rpp::deref(rppHandle),
+                             RPPI_CHN_PLANAR,
+                             1,
+			                 pHist,
+			                 nLevels,
+			                 nLowerLevel,
+			                 nUpperLevel);
+    return RPP_SUCCESS;
+}
+
+NppStatus nppiHistogramEven_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSizeROI, Npp32s *pHist, int nLevels, Npp32s nLowerLevel, Npp32s nUpperLevel, Npp8u *pBuffer)
+{
+	    int noOfImages = 1;
+        int ip_channel = 1;
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oSizeROI.width;
+        srcSize->height = oSizeROI.height;
+        maxSize.width  = oSizeROI.width;
+        maxSize.height = oSizeROI.height;
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        RppStatus status;
+        status = rppi_histogram_even_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, noOfImages, pHist, nLevels, nLowerLevel, nUpperLevel, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMean_StdDev_8u_C1R(const Npp8u *pSrc, int nSrcStep, NppiSize oSizeROI, Npp8u *pDeviceBuffer, Npp64f *pMean, Npp64f *pStdDev)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;
+    RppiSize srcSize;
+    RppiSize maxSize;
+    srcSize.width  = oSizeROI.width;
+    srcSize.height = oSizeROI.height;
+    maxSize.width  = oSizeROI.width;
+    maxSize.height = oSizeROI.height;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    Rpp32f *mean = (Rpp32f*)pMean;
+    Rpp32f *stddev = (Rpp32f*)pStdDev;
+
+    RppStatus status;
+    status = rppi_mean_stddev_u8_pln1_gpu((RppPtr_t)pSrc, srcSize, mean, stddev, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMean_StdDev_8s_C1R_Ctx(const Npp8s *pSrc, int nSrcStep, NppiSize oSizeROI, Npp8u *pDeviceBuffer, Npp64f *pMean, Npp64f *pStdDev, NppStreamContext nppStreamCtx)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;
+    RppiSize srcSize;
+    RppiSize maxSize;
+    srcSize.width  = oSizeROI.width;
+    srcSize.height = oSizeROI.height;
+    maxSize.width  = oSizeROI.width;
+    maxSize.height = oSizeROI.height;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    Rpp32f *mean = (Rpp32f*)pMean;
+    Rpp32f *stddev = (Rpp32f*)pStdDev;
+
+    RppStatus status;
+    status = rppi_mean_stddev_u8_pln1_gpu((RppPtr_t)pSrc, srcSize, mean, stddev, handle);
+     hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+
+    return(hipRppStatusTocudaNppStatus(status));
 }
 
 #endif // GPU_SUPPORT

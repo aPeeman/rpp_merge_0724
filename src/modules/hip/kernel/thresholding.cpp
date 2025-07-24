@@ -30,6 +30,22 @@ __device__ unsigned char threshold(unsigned char input_pixel, unsigned char min,
     return ((input_pixel < min) ? 0 : ((input_pixel > max) ? 0 : 255));
 }
 
+__device__ unsigned char compare(short input_pixel, short tmp, RppCmpOp comop)
+{
+    if(comop == RPP_CMP_LESS){
+	return (input_pixel < tmp) ? 255 : 0;
+    }else if(comop == RPP_CMP_LESS_EQ){
+	return (input_pixel <= tmp) ? 255 : 0;
+    }else if(comop == RPP_CMP_EQ){
+	return (input_pixel == tmp) ? 255 : 0;
+    }else if(comop == RPP_CMP_GREATER_EQ){
+	return (input_pixel >= tmp) ? 255 : 0;
+    }else if(comop == RPP_CMP_GREATER){
+	return (input_pixel > tmp) ? 255 : 0;
+    }
+    return 0;
+}
+
 extern "C" __global__ void thresholding_batch(unsigned char *input,
                                               unsigned char *output,
                                               unsigned char *min,
@@ -76,6 +92,52 @@ extern "C" __global__ void thresholding_batch(unsigned char *input,
     }
 }
 
+extern "C" __global__ void comparec_batch(short *input,
+                                              unsigned char *output,
+                                              unsigned int *xroi_begin,
+                                              unsigned int *xroi_end,
+                                              unsigned int *yroi_begin,
+                                              unsigned int *yroi_end,
+                                              unsigned int *height,
+                                              unsigned int *width,
+                                              unsigned int *max_width,
+                                              unsigned long long *batch_index,
+                                              const unsigned int channel,
+                                              unsigned int *inc, // use width * height for pln and 1 for pkd
+                                              const int plnpkdindex, // use 1 pln 3 for pkd
+					      short constant,
+					      RppCmpOp comop)
+{
+    int id_x = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;
+
+    unsigned char valuergb;
+    short tmp = constant;
+    int indextmp = 0;
+    long pixIdx = 0;
+
+    pixIdx = batch_index[id_z] + (id_x  + id_y * max_width[id_z]) * plnpkdindex;
+
+    if((id_y >= yroi_begin[id_z] ) && (id_y <= yroi_end[id_z]) && (id_x >= xroi_begin[id_z]) && (id_x <= xroi_end[id_z]))
+    {
+        for(indextmp = 0; indextmp < channel; indextmp++)
+        {
+            valuergb = input[batch_index[id_z] + (id_x  + id_y * max_width[id_z]) * plnpkdindex];
+            output[pixIdx] = compare(valuergb, tmp, comop);
+            pixIdx += inc[id_z];
+        }
+    }
+    else if((id_x < width[id_z]) && (id_y < height[id_z]))
+    {
+        for(indextmp = 0; indextmp < channel; indextmp++)
+        {
+            output[pixIdx] = saturate_8u(input[batch_index[id_z] + (id_x  + id_y * max_width[id_z]) * plnpkdindex]);
+            pixIdx += inc[id_z];
+        }
+    }
+}
+
 RppStatus hip_exec_thresholding_batch(Rpp8u *srcPtr, Rpp8u *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32u channel, Rpp32s plnpkdind, Rpp32u max_height, Rpp32u max_width)
 {
     int localThreads_x = 32;
@@ -105,6 +167,39 @@ RppStatus hip_exec_thresholding_batch(Rpp8u *srcPtr, Rpp8u *dstPtr, rpp::Handle&
                        channel,
                        handle.GetInitHandle()->mem.mgpu.inc,
                        plnpkdind);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus npp_exec_comparec_batch(Rpp16s *srcPtr, Rpp8u *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32u channel, Rpp32s plnpkdind, Rpp32u max_height, Rpp32u max_width, Rpp16s nConstant, RppCmpOp rComparisonOperation)
+{
+    int localThreads_x = 32;
+    int localThreads_y = 32;
+    int localThreads_z = 1;
+    int globalThreads_x = (max_width + 31) & ~31;
+    int globalThreads_y = (max_height + 31) & ~31;
+    int globalThreads_z = handle.GetBatchSize();
+
+    hipLaunchKernelGGL(comparec_batch,
+                       dim3(ceil((float)globalThreads_x/localThreads_x), ceil((float)globalThreads_y/localThreads_y), ceil((float)globalThreads_z/localThreads_z)),
+                       dim3(localThreads_x, localThreads_y, localThreads_z),
+                       0,
+                       handle.GetStream(),
+                       srcPtr,
+                       dstPtr,
+                       handle.GetInitHandle()->mem.mgpu.roiPoints.x,
+                       handle.GetInitHandle()->mem.mgpu.roiPoints.roiWidth,
+                       handle.GetInitHandle()->mem.mgpu.roiPoints.y,
+                       handle.GetInitHandle()->mem.mgpu.roiPoints.roiHeight,
+                       handle.GetInitHandle()->mem.mgpu.srcSize.height,
+                       handle.GetInitHandle()->mem.mgpu.srcSize.width,
+                       handle.GetInitHandle()->mem.mgpu.maxSrcSize.width,
+                       handle.GetInitHandle()->mem.mgpu.srcBatchIndex,
+                       channel,
+                       handle.GetInitHandle()->mem.mgpu.inc,
+                       plnpkdind,
+		       nConstant,
+		       rComparisonOperation);
 
     return RPP_SUCCESS;
 }

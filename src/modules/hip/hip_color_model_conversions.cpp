@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "hip_declarations.hpp"
@@ -361,6 +363,55 @@ tensor_look_up_table_hip(Rpp32u tensorDimension, Rpp32u* tensorDimensionValues, 
     dim3 = gDim3[2];
 
     hip_exec_tensor_look_up_table_batch(tensorDimension, srcPtr, dstPtr, hipLutPtr, handle, dim1, dim2, dim3);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+lut_linear_npp_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, const int *pValues, const int *pLevels, int nLevels)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+
+    npp_exec_lut_linear_batch(srcPtr, dstPtr, handle, channel, plnpkdind, max_height, max_width, pValues, pLevels, nLevels);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus 
+cfarorgb_hip_batch(Rpp8u* srcPtr, Rpp8u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiRect srcROI, RppiBayerGridPosition rGrid)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+    
+    hip_exec_cfarorgb_batch(srcPtr, dstPtr, handle, chnFormat, channel, plnpkdind, max_height, max_width, srcROI, rGrid);
+
+    return RPP_SUCCESS;
+}
+
+
+RppStatus 
+cfarorgb_hip_batch_16u(Rpp16u* srcPtr, Rpp16u* dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, unsigned int channel, RppiRect srcROI, RppiBayerGridPosition rGrid)
+{
+    int plnpkdind;
+    if(chnFormat == RPPI_CHN_PLANAR)
+        plnpkdind = 1;
+    else
+        plnpkdind = 3;
+    Rpp32u max_height, max_width;
+    max_size(handle.GetInitHandle()->mem.mgpu.csrcSize.height, handle.GetInitHandle()->mem.mgpu.csrcSize.width, handle.GetBatchSize(), &max_height, &max_width);
+    
+    hip_exec_cfarorgb_batch_u16(srcPtr, dstPtr, handle, chnFormat, channel, plnpkdind, max_height, max_width, srcROI, rGrid);
 
     return RPP_SUCCESS;
 }

@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -1395,6 +1397,215 @@ rppi_flip_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr,
     return RPP_SUCCESS;
 }
 
+RppStatus
+rppi_flip_u8_pkd4_batchPD_gpu(RppPtr_t  srcPtr,
+                              RppiSize *srcSize,
+                              RppiSize  maxSrcSize,
+                              RppPtr_t  dstPtr,
+                              Rpp32u   *flipAxis,
+                              Rpp32u    nbatchSize,
+                              rppHandle_t rppHandle)
+{
+    RppiROI roiPoints = {0,0, 0,0};
+    Rpp32u paramIndex = 0;
+
+    copy_srcSize(srcSize,       rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints,         rpp::deref(rppHandle));
+
+    get_srcBatchIndex(rpp::deref(rppHandle), 4, RPPI_CHN_PACKED);
+
+    copy_param_uint(flipAxis, rpp::deref(rppHandle), paramIndex++);
+
+#ifdef OCL_COMPILE
+    flip_cl_batch(static_cast<cl_mem>(srcPtr),
+                  static_cast<cl_mem>(dstPtr),
+                  rpp::deref(rppHandle),
+                  RPPI_CHN_PACKED, 4);
+#elif defined(HIP_COMPILE)
+    flip_hip_batch(static_cast<Rpp8u*>(srcPtr),
+                   static_cast<Rpp8u*>(dstPtr),
+                   rpp::deref(rppHandle),
+                   RPPI_CHN_PACKED, 4);
+#endif
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_flip_pln1_batchPD_gpu(RppPtr_t srcPtr,
+                              RpptDataType dataType,
+                              RppiSize *srcSize,
+                              RppiSize maxSrcSize,
+                              RppPtr_t dstPtr,
+                              Rpp32u *flipAxis,
+                              Rpp32u nbatchSize,
+                              rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    Rpp32u paramIndex = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 1, RPPI_CHN_PLANAR);
+    copy_param_uint(flipAxis, rpp::deref(rppHandle), paramIndex++);
+
+#ifdef OCL_COMPILE
+    {
+        flip_cl_batch(static_cast<cl_mem>(srcPtr),
+                      static_cast<cl_mem>(dstPtr),
+                      rpp::deref(rppHandle),
+                      RPPI_CHN_PLANAR,
+                      1);
+    }
+#elif defined(HIP_COMPILE)
+    {
+    switch(dataType)
+    {
+        case S32: 
+            flip_hip_batch_s32(static_cast<Rpp32s *>(srcPtr),
+               static_cast<Rpp32s *>(dstPtr),
+               rpp::deref(rppHandle),
+               RPPI_CHN_PLANAR,
+               1);
+            break;
+        case U16:
+            flip_hip_batch_u16(static_cast<Rpp16u *>(srcPtr),
+               static_cast<Rpp16u *>(dstPtr),
+               rpp::deref(rppHandle),
+               RPPI_CHN_PLANAR,
+               1);
+            break;
+        case F32:
+            flip_hip_batch_f32(static_cast<Rpp32f *>(srcPtr),
+               static_cast<Rpp32f *>(dstPtr),
+               rpp::deref(rppHandle),
+               RPPI_CHN_PLANAR,
+               1);
+            break;
+    }
+
+    }
+#endif //BACKEND
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_flip_pkd3_batchPD_gpu(RppPtr_t srcPtr,
+                              RpptDataType dataType,
+                              RppiSize *srcSize,
+                              RppiSize maxSrcSize,
+                              RppPtr_t dstPtr,
+                              Rpp32u *flipAxis,
+                              Rpp32u nbatchSize,
+                              rppHandle_t rppHandle)
+{
+    RppiROI roiPoints;
+    roiPoints.x = 0;
+    roiPoints.y = 0;
+    roiPoints.roiHeight = 0;
+    roiPoints.roiWidth = 0;
+    Rpp32u paramIndex = 0;
+    copy_srcSize(srcSize, rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints, rpp::deref(rppHandle));
+    get_srcBatchIndex(rpp::deref(rppHandle), 3, RPPI_CHN_PACKED);
+    copy_param_uint(flipAxis, rpp::deref(rppHandle), paramIndex++);
+
+#ifdef OCL_COMPILE
+    {
+        flip_cl_batch(static_cast<cl_mem>(srcPtr),
+                      static_cast<cl_mem>(dstPtr),
+                      rpp::deref(rppHandle),
+                      RPPI_CHN_PACKED,
+                      3);
+    }
+#elif defined(HIP_COMPILE)
+    switch(dataType)
+    {
+        case S32: 
+            flip_hip_batch_s32(static_cast<Rpp32s*>(srcPtr),
+                           static_cast<Rpp32s*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 3);
+            break;
+        case U16:
+            flip_hip_batch_u16(static_cast<Rpp16u*>(srcPtr),
+                           static_cast<Rpp16u*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 3);
+            break;
+        case F32:
+            flip_hip_batch_f32(static_cast<Rpp32f*>(srcPtr),
+                           static_cast<Rpp32f*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 3);
+            break;
+    }
+#endif
+
+    return RPP_SUCCESS;
+}
+
+RppStatus
+rppi_flip_pkd4_batchPD_gpu(RppPtr_t  srcPtr,
+                              RpptDataType dataType,
+                              RppiSize *srcSize,
+                              RppiSize  maxSrcSize,
+                              RppPtr_t  dstPtr,
+                              Rpp32u   *flipAxis,
+                              Rpp32u    nbatchSize,
+                              rppHandle_t rppHandle)
+{
+    RppiROI roiPoints = {0,0, 0,0};
+    Rpp32u paramIndex = 0;
+
+    copy_srcSize(srcSize,       rpp::deref(rppHandle));
+    copy_srcMaxSize(maxSrcSize, rpp::deref(rppHandle));
+    copy_roi(roiPoints,         rpp::deref(rppHandle));
+
+    get_srcBatchIndex(rpp::deref(rppHandle), 4, RPPI_CHN_PACKED);
+
+    copy_param_uint(flipAxis, rpp::deref(rppHandle), paramIndex++);
+
+#ifdef OCL_COMPILE
+    flip_cl_batch(static_cast<cl_mem>(srcPtr),
+                  static_cast<cl_mem>(dstPtr),
+                  rpp::deref(rppHandle),
+                  RPPI_CHN_PACKED, 4);
+#elif defined(HIP_COMPILE)
+    switch(dataType)
+    {
+        case S32: 
+            flip_hip_batch_s32(static_cast<Rpp32s*>(srcPtr),
+                           static_cast<Rpp32s*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 4);
+            break;
+        case U16:
+            flip_hip_batch_u16(static_cast<Rpp16u*>(srcPtr),
+                           static_cast<Rpp16u*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 4);
+            break;
+        case F32:
+            flip_hip_batch_f32(static_cast<Rpp32f*>(srcPtr),
+                           static_cast<Rpp32f*>(dstPtr),
+                           rpp::deref(rppHandle),
+                           RPPI_CHN_PACKED, 4);
+            break;
+    }
+#endif
+
+    return RPP_SUCCESS;
+}                              
+
+
 /******************** resize ********************/
 
 RppStatus resize_helper(RppiChnFormat chn_format,
@@ -2581,5 +2792,1512 @@ rppi_warp_perspective_u8_pkd3_batchPD_gpu(RppPtr_t srcPtr,
 
     return RPP_SUCCESS;
 }
+
+NppStatus nppiWarpPerspective_8u_C3R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, 
+				Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd_3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+	RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize,maxDstSize;
+    srcSize->width  = oSrcSize.width;
+    srcSize->height = oSrcSize.height;
+	dstSize->width  = oSrcSize.width;
+    dstSize->height = oSrcSize.height;
+    maxSize.width  = oSrcROI.width;
+    maxSize.height = oSrcROI.height;
+	maxDstSize.width = oSrcROI.width;
+	maxDstSize.height = oSrcROI.height;
+	RppStatus status;
+		
+	//Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+	//aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+	Rpp32f perspective[9] = {0};
+
+    perspective[0] = (Rpp32f)aCoeffs[0][0];
+    perspective[1] = (Rpp32f)aCoeffs[0][1];
+    perspective[2] = (Rpp32f)aCoeffs[0][2];
+    perspective[3] = (Rpp32f)aCoeffs[1][0];
+    perspective[4] = (Rpp32f)aCoeffs[1][1];
+    perspective[5] = (Rpp32f)aCoeffs[1][2];
+    perspective[6] = (Rpp32f)aCoeffs[2][0];
+    perspective[7] = (Rpp32f)aCoeffs[2][1];
+    perspective[8] = (Rpp32f)aCoeffs[2][2];
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+	status = rppi_warp_perspective_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, dstSize, maxDstSize, perspective, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+	free(dstSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiWarpPerspective_8u_C1R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+        RppStatus status;
+
+        //Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+        //aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+        Rpp32f perspective[9] = {0};
+
+        perspective[0] = (Rpp32f)aCoeffs[0][0];
+        perspective[1] = (Rpp32f)aCoeffs[0][1];
+        perspective[2] = (Rpp32f)aCoeffs[0][2];
+        perspective[3] = (Rpp32f)aCoeffs[1][0];
+        perspective[4] = (Rpp32f)aCoeffs[1][1];
+        perspective[5] = (Rpp32f)aCoeffs[1][2];
+        perspective[6] = (Rpp32f)aCoeffs[2][0];
+        perspective[7] = (Rpp32f)aCoeffs[2][1];
+        perspective[8] = (Rpp32f)aCoeffs[2][2];
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_warp_perspective_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, dstSize, maxDstSize, perspective, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        free(dstSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiWarpPerspective_8u_C1R(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+        RppStatus status;
+
+        //Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+        //aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+        Rpp32f perspective[9] = {0};
+
+        perspective[0] = (Rpp32f)aCoeffs[0][0];
+        perspective[1] = (Rpp32f)aCoeffs[0][1];
+        perspective[2] = (Rpp32f)aCoeffs[0][2];
+        perspective[3] = (Rpp32f)aCoeffs[1][0];
+        perspective[4] = (Rpp32f)aCoeffs[1][1];
+        perspective[5] = (Rpp32f)aCoeffs[1][2];
+        perspective[6] = (Rpp32f)aCoeffs[2][0];
+        perspective[7] = (Rpp32f)aCoeffs[2][1];
+        perspective[8] = (Rpp32f)aCoeffs[2][2];
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_warp_perspective_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, dstSize, maxDstSize, perspective, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        free(dstSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiWarpPerspective_8u_C3R_Ctx(const Npp8u *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst, int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+        RppStatus status;
+
+        //Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+        //aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+        Rpp32f perspective[9] = {0};
+
+        perspective[0] = (Rpp32f)aCoeffs[0][0];
+        perspective[1] = (Rpp32f)aCoeffs[0][1];
+        perspective[2] = (Rpp32f)aCoeffs[0][2];
+        perspective[3] = (Rpp32f)aCoeffs[1][0];
+        perspective[4] = (Rpp32f)aCoeffs[1][1];
+        perspective[5] = (Rpp32f)aCoeffs[1][2];
+        perspective[6] = (Rpp32f)aCoeffs[2][0];
+        perspective[7] = (Rpp32f)aCoeffs[2][1];
+        perspective[8] = (Rpp32f)aCoeffs[2][2];
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_warp_perspective_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, dstSize, maxDstSize, perspective, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        free(dstSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiWarpPerspective_8u_P3R_Ctx(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pln3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+        RppStatus status;
+
+        //Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+        //aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+        Rpp32f perspective[9] = {0};
+
+        perspective[0] = (Rpp32f)aCoeffs[0][0];
+        perspective[1] = (Rpp32f)aCoeffs[0][1];
+        perspective[2] = (Rpp32f)aCoeffs[0][2];
+        perspective[3] = (Rpp32f)aCoeffs[1][0];
+        perspective[4] = (Rpp32f)aCoeffs[1][1];
+        perspective[5] = (Rpp32f)aCoeffs[1][2];
+        perspective[6] = (Rpp32f)aCoeffs[2][0];
+        perspective[7] = (Rpp32f)aCoeffs[2][1];
+        perspective[8] = (Rpp32f)aCoeffs[2][2];
+		
+	    Rpp8u *temp_in,*temp_output;
+        hipMalloc(&temp_in, oSrcSize.height * oSrcSize.width * ip_channel);
+	    hipMalloc(&temp_output, oSrcSize.height * oSrcSize.width * ip_channel);
+        for (int i = 0; i < ip_channel; i++)
+        {
+            hipMemcpy(temp_in + (i * oSrcSize.height * oSrcSize.width), pSrc[i], oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_warp_perspective_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, perspective, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+		
+	    for (int m = 0; m < ip_channel; m++)
+        {
+            hipMemcpy(pDst[m],temp_output + (m * oSrcSize.height * oSrcSize.width), oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+		
+        free(srcSize);
+        free(dstSize);
+	    hipFree(temp_in);
+        hipFree(temp_output);
+	
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiWarpPerspective_8u_P3R(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[3][3], int eInterpolation)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pln3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+        RppStatus status;
+
+        //Rpp32f perspective[9] = {aCoeffs[0][0],aCoeffs[0][1],aCoeffs[0][2],aCoeffs[1][0],aCoeffs[1][1],
+        //aCoeffs[1][2],aCoeffs[2][0],aCoeffs[2][1],aCoeffs[2][2]};
+        Rpp32f perspective[9] = {0};
+
+        perspective[0] = (Rpp32f)aCoeffs[0][0];
+        perspective[1] = (Rpp32f)aCoeffs[0][1];
+        perspective[2] = (Rpp32f)aCoeffs[0][2];
+        perspective[3] = (Rpp32f)aCoeffs[1][0];
+        perspective[4] = (Rpp32f)aCoeffs[1][1];
+        perspective[5] = (Rpp32f)aCoeffs[1][2];
+        perspective[6] = (Rpp32f)aCoeffs[2][0];
+        perspective[7] = (Rpp32f)aCoeffs[2][1];
+        perspective[8] = (Rpp32f)aCoeffs[2][2];
+		
+	    Rpp8u *temp_in,*temp_output;
+        hipMalloc(&temp_in, oSrcSize.height * oSrcSize.width * ip_channel);
+	    hipMalloc(&temp_output, oSrcSize.height * oSrcSize.width * ip_channel);
+        for (int i = 0; i < ip_channel; i++)
+        {
+            hipMemcpy(temp_in + (i * oSrcSize.height * oSrcSize.width), pSrc[i], oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_warp_perspective_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, perspective, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+		
+	    for (int m = 0; m < ip_channel; m++)
+        {
+            hipMemcpy(pDst[m],temp_output + (m * oSrcSize.height * oSrcSize.width), oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+		
+        free(srcSize);
+        free(dstSize);
+	    hipFree(temp_in);
+        hipFree(temp_output);
+	
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C3R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        RppStatus status;
+
+	    Rpp32u flipAxis;
+
+	    if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C4R(const Npp8u *pSrc, int nSrcStep,
+                            Npp8u *pDst, int nDstStep,
+                            NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RppStatus status = rppi_flip_u8_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_8u_C4IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip) {
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u));
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RppStatus status = rppi_flip_u8_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrcDst, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u), hipMemcpyDeviceToDevice);
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_8u_C1R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C1R(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width; 
+        srcSize->height = oROI.height; 
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pln1_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C1IR_Ctx(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+	    int *pDst;
+	    hipMalloc(&pDst, oROI.width * oROI.height * sizeof(Rpp8u));
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pln1_batchPD_gpu((RppPtr_t)pSrcDst, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+	    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * sizeof(Rpp8u), hipMemcpyDeviceToDevice);
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+	    hipFree(pDst);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C1IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+        int noOfImages = 1;
+        int ip_channel = 1;//pln1
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize)); 
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        int *pDst;
+        hipMalloc(&pDst, oROI.width * oROI.height * sizeof(Rpp8u));
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pln1_batchPD_gpu((RppPtr_t)pSrcDst, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+        hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * sizeof(Rpp8u), hipMemcpyDeviceToDevice);
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        hipFree(pDst);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C3R_Ctx(const Npp8u *pSrc, int nSrcStep, Npp8u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd_3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pkd3_batchPD_gpu((RppPtr_t)pSrc, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C3IR_Ctx(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip, NppStreamContext nppStreamCtx)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize)); 
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        int *pDst;
+        hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u));
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pkd3_batchPD_gpu((RppPtr_t)pSrcDst, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+        hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u), hipMemcpyDeviceToDevice);
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        hipFree(pDst);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_8u_C3IR(Npp8u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pkd3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize;
+        srcSize->width  = oROI.width;
+        srcSize->height = oROI.height;
+        maxSize.width  = oROI.width;
+        maxSize.height = oROI.height;
+        int *pDst;
+        hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u));
+        RppStatus status;
+
+        Rpp32u flipAxis;
+
+        if(flip == NPP_HORIZONTAL_AXIS)
+        {
+            flipAxis = 0;
+        }else if(flip == NPP_VERTICAL_AXIS)
+        {
+            flipAxis = 1;
+        }else if(flip == NPP_BOTH_AXIS)
+        {
+            flipAxis = 2;
+        }
+
+        rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+        status = rppi_flip_u8_pkd3_batchPD_gpu((RppPtr_t)pSrcDst, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+        hipDeviceSynchronize();
+        hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp8u), hipMemcpyDeviceToDevice);
+
+        rppDestroyGPU(handle);
+        free(srcSize);
+        hipFree(pDst);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32s_C4R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip) 
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_32f_C4R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_16u_C4R(const Npp16u *pSrc, int nSrcStep, Npp16u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = U16;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_32f_C4IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32f));
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32f), hipMemcpyDeviceToDevice);
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_32s_C4IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32s));
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32s), hipMemcpyDeviceToDevice);
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_16u_C4IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    const int noOfImages = 1;
+    const int ip_channel  = 4; //4-CHANNEL
+    RppiSize *srcSize = (RppiSize*)calloc(noOfImages, sizeof(RppiSize));
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    RppiSize maxSize = *srcSize;
+
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp16u));
+
+    Rpp32u flipAxis = 0;
+    if      (flip == NPP_HORIZONTAL_AXIS) flipAxis = 0;
+    else if (flip == NPP_VERTICAL_AXIS  ) flipAxis = 1;
+    else if (flip == NPP_BOTH_AXIS      ) flipAxis = 2;
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = U16;
+
+    RppStatus status = rppi_flip_pkd4_batchPD_gpu(
+        (RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst,
+        &flipAxis, noOfImages, handle);
+
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp16u), hipMemcpyDeviceToDevice);
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return hipRppStatusTocudaNppStatus(status);
+}
+
+NppStatus nppiMirror_32s_C3R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd_3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    RppStatus status;
+
+	Rpp32u flipAxis;
+
+	if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+
+    status = rppi_flip_pkd3_batchPD_gpu((RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32f_C3R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd_3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    RppStatus status;
+
+	Rpp32u flipAxis;
+
+	if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+
+    status = rppi_flip_pkd3_batchPD_gpu((RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));    
+}
+
+NppStatus nppiMirror_32s_C3IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32s));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+
+    status = rppi_flip_pkd3_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32s), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32f_C3IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32f));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+
+    status = rppi_flip_pkd3_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp32f), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_16u_C3IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 3;//pkd3
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp16u));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = U16;
+
+    status = rppi_flip_pkd3_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * ip_channel * sizeof(Rpp16u), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32s_C1R(const Npp32s *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width; 
+    srcSize->height = oROI.height; 
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32f_C1R(const Npp32f *pSrc, int nSrcStep, Npp32f *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width; 
+    srcSize->height = oROI.height; 
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_16u_C1R(const Npp16u *pSrc, int nSrcStep, Npp16u *pDst, int nDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+    RppiSize maxSize;
+    srcSize->width  = oROI.width; 
+    srcSize->height = oROI.height; 
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = U16;
+
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrc, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32s_C1IR(Npp32s *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize)); 
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * sizeof(Rpp32s));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = S32;
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * sizeof(Rpp32s), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_32f_C1IR(Npp32f *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize)); 
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * sizeof(Rpp32f));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = F32;
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * sizeof(Rpp32f), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+NppStatus nppiMirror_16u_C1IR(Npp16u *pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis flip)
+{
+    int noOfImages = 1;
+    int ip_channel = 1;//pln1
+    RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize)); 
+    RppiSize maxSize;
+    srcSize->width  = oROI.width;
+    srcSize->height = oROI.height;
+    maxSize.width  = oROI.width;
+    maxSize.height = oROI.height;
+    int *pDst;
+    hipMalloc(&pDst, oROI.width * oROI.height * sizeof(Rpp16u));
+    RppStatus status;
+
+    Rpp32u flipAxis;
+
+    if(flip == NPP_HORIZONTAL_AXIS)
+    {
+        flipAxis = 0;
+    }else if(flip == NPP_VERTICAL_AXIS)
+    {
+        flipAxis = 1;
+    }else if(flip == NPP_BOTH_AXIS)
+    {
+        flipAxis = 2;
+    }
+
+    rppHandle_t handle;
+    hipStream_t stream;
+    hipStreamCreate(&stream);
+    rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+
+    RpptDataType dataType = U16;
+    status = rppi_flip_pln1_batchPD_gpu((RppPtr_t)pSrcDst, dataType, srcSize, maxSize, (RppPtr_t)pDst, &flipAxis, noOfImages, handle);
+    hipDeviceSynchronize();
+    hipMemcpy(pSrcDst, pDst, oROI.width * oROI.height * sizeof(Rpp16u), hipMemcpyDeviceToDevice);
+
+    rppDestroyGPU(handle);
+    free(srcSize);
+    hipFree(pDst);
+
+    return(hipRppStatusTocudaNppStatus(status));
+}
+
+/*NppStatus nppiWarpAffine_8u_P3R(const Npp8u *pSrc[3], NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, Npp8u *pDst[3], int nDstStep, NppiRect oDstROI, const double aCoeffs[2][3], int eInterpolation)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pln3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oSrcSize.width;
+        dstSize->height = oSrcSize.height;
+        maxSize.width  = oSrcROI.width;
+        maxSize.height = oSrcROI.height;
+        maxDstSize.width = oSrcROI.width;
+        maxDstSize.height = oSrcROI.height;
+	unsigned int outputFormatToggle = 0;
+        RppStatus status;
+
+        Rpp32f6 affineTensor_f6[1];
+        Rpp32f *affineTensor = (Rpp32f *)affineTensor_f6;
+        affineTensor_f6[0].data[0] = aCoeffs[0][0];
+        affineTensor_f6[0].data[1] = aCoeffs[0][1];
+        affineTensor_f6[0].data[2] = aCoeffs[0][2];
+        affineTensor_f6[0].data[3] = aCoeffs[1][0];
+        affineTensor_f6[0].data[4] = aCoeffs[1][1];
+        affineTensor_f6[0].data[5] = aCoeffs[1][2];
+
+        Rpp8u *temp_in,*temp_output;
+        hipMalloc(&temp_in, oSrcSize.height * oSrcSize.width * ip_channel);
+        hipMalloc(&temp_output, oSrcSize.height * oSrcSize.width * ip_channel);
+        for (int i = 0; i < ip_channel; i++)
+        {
+            hipMemcpy(temp_in + (i * oSrcSize.height * oSrcSize.width), pSrc[i], oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+		
+	rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+        clock_t start, end;
+        double gpu_time_used;
+
+        start = clock();
+        //status = rppi_warp_perspective_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, perspective, noOfImages, handle);
+	status = rppi_warp_affine_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, affineTensor, outputFormatToggle, noOfImages, handle);
+        hipDeviceSynchronize();
+        end = clock();
+
+        printf("\nnppiWarpAffine_8u_P3R is %d\n", status);
+        gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        std::cout << "\nGPU WarpAffine_8u -  : " << gpu_time_used;
+        printf("\n");
+        rppDestroyGPU(handle);
+
+        for (int m = 0; m < ip_channel; m++)
+        {
+            hipMemcpy(pDst[m],temp_output + (m * oSrcSize.height * oSrcSize.width), oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+
+        free(srcSize);
+        free(dstSize);
+        hipFree(temp_in);
+        hipFree(temp_output);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}*/
+
+/*NppStatus nppiResize_8u_P3R(const Npp8u *pSrc[3], int nSrcStep, NppiSize oSrcSize, NppiRect oSrcRectROI, Npp8u *pDst[3], int nDstStep, NppiSize oDstSize, NppiRect oDstRectROI, int eInterpolation)
+{
+        int noOfImages = 1;
+        int ip_channel = 3;//pln3
+        RppiSize *srcSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize *dstSize = (RppiSize *)calloc(noOfImages, sizeof(RppiSize));
+        RppiSize maxSize,maxDstSize;
+        srcSize->width  = oSrcSize.width;
+        srcSize->height = oSrcSize.height;
+        dstSize->width  = oDstSize.width;
+        dstSize->height = oDstSize.height;
+        maxSize.width  = oSrcRectROI.width;
+        maxSize.height = oSrcRectROI.height;
+        maxDstSize.width = oDstRectROI.width;
+        maxDstSize.height = oDstRectROI.height;
+	unsigned int outputFormatToggle = 0;
+        RppStatus status;
+
+        Rpp8u *temp_in,*temp_output;
+        hipMalloc(&temp_in, oSrcSize.height * oSrcSize.width * ip_channel);
+        hipMalloc(&temp_output, oDstSize.height * oDstSize.width * ip_channel);
+        for (int i = 0; i < ip_channel; i++)
+        {
+            hipMemcpy(temp_in + (i * oSrcSize.height * oSrcSize.width), pSrc[i], oSrcSize.height * oSrcSize.width, hipMemcpyDeviceToDevice);
+        }
+		
+	rppHandle_t handle;
+        hipStream_t stream;
+        hipStreamCreate(&stream);
+        rppCreateWithStreamAndBatchSize(&handle, stream, noOfImages);
+        clock_t start, end;
+        double gpu_time_used;
+
+        start = clock();
+        //status = rppi_warp_perspective_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, perspective, noOfImages, handle);
+	status = rppi_resize_u8_pln3_batchPD_gpu((RppPtr_t)temp_in, srcSize, maxSize, (RppPtr_t)temp_output, dstSize, maxDstSize, outputFormatToggle, noOfImages, handle);
+        hipDeviceSynchronize();
+        end = clock();
+
+        printf("\nnppiResize_8u_P3R is %d\n", status);
+        gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+        std::cout << "\nGPU Resize_8u -  : " << gpu_time_used;
+        printf("\n");
+        rppDestroyGPU(handle);
+
+        for (int m = 0; m < ip_channel; m++)
+        {
+            hipMemcpy(pDst[m],temp_output + (m * oDstSize.height * oDstSize.width), oDstSize.height * oDstSize.width, hipMemcpyDeviceToDevice);
+        }
+
+        free(srcSize);
+        free(dstSize);
+        hipFree(temp_in);
+        hipFree(temp_output);
+
+        return(hipRppStatusTocudaNppStatus(status));
+}*/
 
 #endif // GPU_SUPPORT

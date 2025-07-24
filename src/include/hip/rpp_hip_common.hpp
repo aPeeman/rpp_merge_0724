@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPP_HIP_COMMON_H
@@ -182,6 +184,13 @@ inline void generate_gaussian_kernel_gpu(Rpp32f stdDev, Rpp32f* kernel, Rpp32u k
     }
 }
 
+// Retrieve Min and Max given a datatype
+
+inline void getImageBitDepthMinMax(uchar *srcPtr, float2 *bitDepthMinMax_f2) { *bitDepthMinMax_f2 = make_float2(0, 255); }
+inline void getImageBitDepthMinMax(float *srcPtr, float2 *bitDepthMinMax_f2) { *bitDepthMinMax_f2 = make_float2(0, 255); }
+inline void getImageBitDepthMinMax(half *srcPtr, float2 *bitDepthMinMax_f2) { *bitDepthMinMax_f2 = make_float2(0, 255); }
+inline void getImageBitDepthMinMax(schar *srcPtr, float2 *bitDepthMinMax_f2) { *bitDepthMinMax_f2 = make_float2(-128, 127); }
+
 /******************** DEVICE FUNCTIONS ********************/
 
 // -------------------- Set 0 - Range checks and Range adjustment --------------------
@@ -285,8 +294,10 @@ __device__ __forceinline__ void rpp_hip_pixel_check_0to1(d_float24 *pix_f24)
 
 __device__ __forceinline__ void rpp_hip_roi_range_check(float2 *locSrcFloor_f2, int4 *roiPtrSrc_i4, int2 *locSrc_i2)
 {
-    locSrc_i2->x = (int)fminf(fmaxf(locSrcFloor_f2->x, roiPtrSrc_i4->x), roiPtrSrc_i4->z - 1);
-    locSrc_i2->y = (int)fminf(fmaxf(locSrcFloor_f2->y, roiPtrSrc_i4->y), roiPtrSrc_i4->w - 1);
+    // locSrc_i2->x = (int)fminf(fmaxf(locSrcFloor_f2->x, roiPtrSrc_i4->x), roiPtrSrc_i4->z - 1);
+    // locSrc_i2->y = (int)fminf(fmaxf(locSrcFloor_f2->y, roiPtrSrc_i4->y), roiPtrSrc_i4->w - 1);
+    locSrc_i2->x = (int)fminf(fmaxf(locSrcFloor_f2->x, roiPtrSrc_i4->x), roiPtrSrc_i4->z);
+    locSrc_i2->y = (int)fminf(fmaxf(locSrcFloor_f2->y, roiPtrSrc_i4->y), roiPtrSrc_i4->w);
 }
 
 // d_float8 adjust pixel range for different bit depths
@@ -979,6 +990,39 @@ __device__ __forceinline__ void rpp_hip_pack_float8_and_store8(half *dstPtr, d_f
     *(d_half8 *)dstPtr = dst_h8;
 }
 
+ // ADD TYPES FOR GPU FUSION
+
+__device__ __forceinline__
+void rpp_hip_pack_float8_and_store8(uint16_t *dstPtr, d_float8 *dst_f8)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        float v = dst_f8->f1[i];
+        v = v < 0.0f ? 0.0f : (v > 65535.0f ? 65535.0f : v);
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float8_and_store8(int16_t *dstPtr, d_float8 *dst_f8)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        float v = dst_f8->f1[i];
+        v = v < -32768.0f ? -32768.0f : (v > 32767.0f ? 32767.0f : v);
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float8_and_store8(double *dstPtr, d_float8 *dst_f8)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        dstPtr[i] = static_cast<double>(dst_f8->f1[i]);
+    }
+}
+
 // U8 stores without layout toggle PKD3 to PKD3 (24 U8 pixels)
 
 __device__ __forceinline__ void rpp_hip_pack_float24_pkd3_and_store24_pkd3(uchar *dstPtr, d_float24 *dstPtr_f24)
@@ -1039,6 +1083,42 @@ __device__ __forceinline__ void rpp_hip_pack_float24_pkd3_and_store24_pkd3(half 
 
     *(d_half24 *)dstPtr = dst_h24;
 }
+
+
+ // ADD TYPES FOR GPU FUSION
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pkd3(uint16_t *dstPtr, d_float24 *dst_f24)
+{
+    for (int i = 0; i < 24; i++)
+    {
+        float v = dst_f24->f1[i];
+        v = (v < 0.0f) ? 0.0f : v;
+        v = (v > 65535.0f) ? 65535.0f : v;
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pkd3(int16_t *dstPtr, d_float24 *dst_f24)
+{
+    for (int i = 0; i < 24; i++)
+    {
+        float v = dst_f24->f1[i];
+        v = (v < -32768.0f) ? -32768.0f : v;
+        v = (v >  32767.0f) ?  32767.0f : v;
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0 ? 0.5f : -0.5f));
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pkd3(double *dstPtr, d_float24 *dst_f24)
+{
+    for (int i = 0; i < 24; i++)
+        dstPtr[i] = static_cast<double>(dst_f24->f1[i]);
+}
+
+
+
 
 // U8 stores without layout toggle PLN3 to PLN3 (24 U8 pixels)
 
@@ -1189,6 +1269,53 @@ __device__ __forceinline__ void rpp_hip_pack_float24_pln3_and_store24_pkd3(half 
     *(d_half24 *)dstPtr = dst_h24;
 }
 
+ // ADD TYPES FOR GPU FUSION
+static __device__ __constant__ int pkd3_map[24] = {
+     0,  8, 16,   // R00,G00,B00
+     1,  9, 17,   // R01,G01,B01
+     2, 10, 18,   // R02,G02,B02
+     3, 11, 19,   // R03,G03,B03
+     4, 12, 20,   // R04,G04,B04
+     5, 13, 21,   // R05,G05,B05
+     6, 14, 22,   // R06,G06,B06
+     7, 15, 23    // R07,G07,B07
+};
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pln3_and_store24_pkd3(uint16_t *dstPtr, d_float24 *src_f24)
+{
+    for (int i = 0; i < 24; i++)
+    {
+        float v = src_f24->f1[ pkd3_map[i] ];
+        // clamp 到 [0, 65535]
+        v = v < 0.0f   ? 0.0f
+          : v > 65535.0f ? 65535.0f
+          : v;
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pln3_and_store24_pkd3(int16_t *dstPtr, d_float24 *src_f24)
+{
+    for (int i = 0; i < 24; i++)
+    {
+        float v = src_f24->f1[ pkd3_map[i] ];
+        // clamp 到 [-32768, 32767]
+        v = v < -32768.0f  ? -32768.0f
+          : v >  32767.0f  ?  32767.0f
+          : v;
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pln3_and_store24_pkd3(double *dstPtr, d_float24 *src_f24)
+{
+    for (int i = 0; i < 24; i++)
+        dstPtr[i] = static_cast<double>(src_f24->f1[ pkd3_map[i] ]);
+}
+
 // U8 stores with layout toggle PKD3 to PLN3 (24 U8 pixels)
 
 __device__ __forceinline__ void rpp_hip_pack_float24_pkd3_and_store24_pln3(uchar *dstPtr, uint increment, d_float24 *dstPtr_f24)
@@ -1275,6 +1402,69 @@ __device__ __forceinline__ void rpp_hip_pack_float24_pkd3_and_store24_pln3(half 
     *(d_half8 *)dstPtr = dst_h24.h8[2];
 }
 
+ // ADD TYPES FOR GPU FUSION
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pln3(uint16_t *dstPtr, uint increment, d_float24 *src_f24)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 0];
+        v = v < 0.0f ? 0.0f : (v > 65535.0f ? 65535.0f : v);
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 1];
+        v = v < 0.0f ? 0.0f : (v > 65535.0f ? 65535.0f : v);
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 2];
+        v = v < 0.0f ? 0.0f : (v > 65535.0f ? 65535.0f : v);
+        dstPtr[i] = static_cast<uint16_t>(v + 0.5f);
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pln3(int16_t *dstPtr, uint increment, d_float24 *src_f24)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 0];
+        v = v < -32768.0f ? -32768.0f : (v > 32767.0f ? 32767.0f : v);
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 1];
+        v = v < -32768.0f ? -32768.0f : (v > 32767.0f ? 32767.0f : v);
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+    {
+        float v = src_f24->f1[3 * i + 2];
+        v = v < -32768.0f ? -32768.0f : (v > 32767.0f ? 32767.0f : v);
+        dstPtr[i] = static_cast<int16_t>(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
+}
+
+__device__ __forceinline__
+void rpp_hip_pack_float24_pkd3_and_store24_pln3(double *dstPtr, uint increment, d_float24 *src_f24)
+{
+    for (int i = 0; i < 8; i++)
+        dstPtr[i] = static_cast<double>(src_f24->f1[3 * i + 0]);
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+        dstPtr[i] = static_cast<double>(src_f24->f1[3 * i + 1]);
+    dstPtr += increment;
+    for (int i = 0; i < 8; i++)
+        dstPtr[i] = static_cast<double>(src_f24->f1[3 * i + 2]);
+}
 // -------------------- Set 6 - Loads to uchar --------------------
 
 // WITHOUT LAYOUT TOGGLE
@@ -1558,6 +1748,20 @@ __device__ __forceinline__ void rpp_hip_load24_pkd3_to_int24_pln3(schar *srcPtr,
 
 // /******************** DEVICE MATH HELPER FUNCTIONS ********************/
 
+// float8 min
+
+__device__ __forceinline__ void rpp_hip_math_min8(d_float8 *srcPtr_f8, float *dstPtr)
+{
+    *dstPtr = fminf(fminf(fminf(fminf(fminf(fminf(fminf(srcPtr_f8->f1[0], srcPtr_f8->f1[1]), srcPtr_f8->f1[2]), srcPtr_f8->f1[3]), srcPtr_f8->f1[4]), srcPtr_f8->f1[5]), srcPtr_f8->f1[6]), srcPtr_f8->f1[7]);
+}
+
+// float8 max
+
+__device__ __forceinline__ void rpp_hip_math_max8(d_float8 *srcPtr_f8, float *dstPtr)
+{
+    *dstPtr = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(srcPtr_f8->f1[0], srcPtr_f8->f1[1]), srcPtr_f8->f1[2]), srcPtr_f8->f1[3]), srcPtr_f8->f1[4]), srcPtr_f8->f1[5]), srcPtr_f8->f1[6]), srcPtr_f8->f1[7]);
+}
+
 // d_float16 floor
 
 __device__ __forceinline__ void rpp_hip_math_floor16(d_float16 *srcPtr_f16, d_float16 *dstPtr_f16)
@@ -1578,6 +1782,20 @@ __device__ __forceinline__ void rpp_hip_math_floor16(d_float16 *srcPtr_f16, d_fl
     dstPtr_f16->f1[13] = floorf(srcPtr_f16->f1[13]);
     dstPtr_f16->f1[14] = floorf(srcPtr_f16->f1[14]);
     dstPtr_f16->f1[15] = floorf(srcPtr_f16->f1[15]);
+}
+
+// d_float8 nearbyintf
+
+__device__ __forceinline__ void rpp_hip_math_nearbyintf8(d_float8 *srcPtr_f8, d_float8 *dstPtr_f8)
+{
+    dstPtr_f8->f1[0] = nearbyintf(srcPtr_f8->f1[0]);
+    dstPtr_f8->f1[1] = nearbyintf(srcPtr_f8->f1[1]);
+    dstPtr_f8->f1[2] = nearbyintf(srcPtr_f8->f1[2]);
+    dstPtr_f8->f1[3] = nearbyintf(srcPtr_f8->f1[3]);
+    dstPtr_f8->f1[4] = nearbyintf(srcPtr_f8->f1[4]);
+    dstPtr_f8->f1[5] = nearbyintf(srcPtr_f8->f1[5]);
+    dstPtr_f8->f1[6] = nearbyintf(srcPtr_f8->f1[6]);
+    dstPtr_f8->f1[7] = nearbyintf(srcPtr_f8->f1[7]);
 }
 
 // d_float8 add
@@ -1688,6 +1906,34 @@ __device__ __forceinline__ void rpp_hip_math_multiply24_const(d_float24 *src_f24
     dst_f24->f4[3] = src_f24->f4[3] * multiplier_f4;
     dst_f24->f4[4] = src_f24->f4[4] * multiplier_f4;
     dst_f24->f4[5] = src_f24->f4[5] * multiplier_f4;
+}
+
+// d_float8 bitwiseAND
+
+__device__ __forceinline__ void rpp_hip_math_bitwiseAnd8(d_float8 *src1_f8, d_float8 *src2_f8, d_float8 *dst_f8)
+{
+        dst_f8->f1[0] = (float)((uchar)(src1_f8->f1[0]) & (uchar)(src2_f8->f1[0]));
+        dst_f8->f1[1] = (float)((uchar)(src1_f8->f1[1]) & (uchar)(src2_f8->f1[1]));
+        dst_f8->f1[2] = (float)((uchar)(src1_f8->f1[2]) & (uchar)(src2_f8->f1[2]));
+        dst_f8->f1[3] = (float)((uchar)(src1_f8->f1[3]) & (uchar)(src2_f8->f1[3]));
+        dst_f8->f1[4] = (float)((uchar)(src1_f8->f1[4]) & (uchar)(src2_f8->f1[4]));
+        dst_f8->f1[5] = (float)((uchar)(src1_f8->f1[5]) & (uchar)(src2_f8->f1[5]));
+        dst_f8->f1[6] = (float)((uchar)(src1_f8->f1[6]) & (uchar)(src2_f8->f1[6]));
+        dst_f8->f1[7] = (float)((uchar)(src1_f8->f1[7]) & (uchar)(src2_f8->f1[7]));
+}
+
+// d_float8 bitwiseOR
+
+__device__ __forceinline__ void rpp_hip_math_bitwiseOr8(d_float8 *src1_f8, d_float8 *src2_f8, d_float8 *dst_f8)
+{
+        dst_f8->f1[0] = (float)((uchar)(src1_f8->f1[0]) | (uchar)(src2_f8->f1[0]));
+        dst_f8->f1[1] = (float)((uchar)(src1_f8->f1[1]) | (uchar)(src2_f8->f1[1]));
+        dst_f8->f1[2] = (float)((uchar)(src1_f8->f1[2]) | (uchar)(src2_f8->f1[2]));
+        dst_f8->f1[3] = (float)((uchar)(src1_f8->f1[3]) | (uchar)(src2_f8->f1[3]));
+        dst_f8->f1[4] = (float)((uchar)(src1_f8->f1[4]) | (uchar)(src2_f8->f1[4]));
+        dst_f8->f1[5] = (float)((uchar)(src1_f8->f1[5]) | (uchar)(src2_f8->f1[5]));
+        dst_f8->f1[6] = (float)((uchar)(src1_f8->f1[6]) | (uchar)(src2_f8->f1[6]));
+        dst_f8->f1[7] = (float)((uchar)(src1_f8->f1[7]) | (uchar)(src2_f8->f1[7]));
 }
 
 __device__ __forceinline__ float rpp_hip_math_inverse_sqrt1(float x)
@@ -2074,6 +2320,95 @@ __device__ __forceinline__ void rpp_hip_interpolate1_bilinear_load_pln1(half *sr
     *srcNeighborhood_f4 = make_float4(srcUpper_f2.x, srcUpper_f2.y, srcLower_f2.x, srcLower_f2.y);
 }
 
+// ADD TYPES FOR GPU FUSION
+__device__ __forceinline__ 
+void rpp_hip_interpolate1_bilinear_load_pln1(uint16_t *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             float4 *srcNeighborhood_f4)
+{
+    int2 locSrc1_i2, locSrc2_i2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc1_i2);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc2_i2);
+
+    int2 srcInterRowLoc_i2 = {
+        locSrc1_i2.y * (int)srcStrideH,
+        locSrc2_i2.y * (int)srcStrideH
+    };
+
+    // Top-left & top-right
+    int idxTL = srcInterRowLoc_i2.x + locSrc1_i2.x;
+    int idxTR = srcInterRowLoc_i2.x + locSrc2_i2.x;
+    srcNeighborhood_f4->x = static_cast<float>(srcPtr[idxTL]);
+    srcNeighborhood_f4->y = static_cast<float>(srcPtr[idxTR]);
+
+    // Bottom-left & bottom-right
+    int idxBL = srcInterRowLoc_i2.y + locSrc1_i2.x;
+    int idxBR = srcInterRowLoc_i2.y + locSrc2_i2.x;
+    srcNeighborhood_f4->z = static_cast<float>(srcPtr[idxBL]);
+    srcNeighborhood_f4->w = static_cast<float>(srcPtr[idxBR]);
+}
+
+__device__ __forceinline__ 
+void rpp_hip_interpolate1_bilinear_load_pln1(int16_t *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             float4 *srcNeighborhood_f4)
+{
+    int2 locSrc1_i2, locSrc2_i2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc1_i2);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc2_i2);
+
+    int2 srcInterRowLoc_i2 = {
+        locSrc1_i2.y * (int)srcStrideH,
+        locSrc2_i2.y * (int)srcStrideH
+    };
+
+    int idxTL = srcInterRowLoc_i2.x + locSrc1_i2.x;
+    int idxTR = srcInterRowLoc_i2.x + locSrc2_i2.x;
+    srcNeighborhood_f4->x = static_cast<float>(srcPtr[idxTL]);
+    srcNeighborhood_f4->y = static_cast<float>(srcPtr[idxTR]);
+
+    int idxBL = srcInterRowLoc_i2.y + locSrc1_i2.x;
+    int idxBR = srcInterRowLoc_i2.y + locSrc2_i2.x;
+    srcNeighborhood_f4->z = static_cast<float>(srcPtr[idxBL]);
+    srcNeighborhood_f4->w = static_cast<float>(srcPtr[idxBR]);
+}
+
+
+__device__ __forceinline__ 
+void rpp_hip_interpolate1_bilinear_load_pln1(double *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             float4 *srcNeighborhood_f4)
+{
+    int2 locSrc1_i2, locSrc2_i2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc1_i2);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &locSrc2_i2);
+
+    int2 srcInterRowLoc_i2 = {
+        locSrc1_i2.y * (int)srcStrideH,
+        locSrc2_i2.y * (int)srcStrideH
+    };
+
+    int idxTL = srcInterRowLoc_i2.x + locSrc1_i2.x;
+    int idxTR = srcInterRowLoc_i2.x + locSrc2_i2.x;
+    srcNeighborhood_f4->x = static_cast<float>(srcPtr[idxTL]);
+    srcNeighborhood_f4->y = static_cast<float>(srcPtr[idxTR]);
+
+    int idxBL = srcInterRowLoc_i2.y + locSrc1_i2.x;
+    int idxBR = srcInterRowLoc_i2.y + locSrc2_i2.x;
+    srcNeighborhood_f4->z = static_cast<float>(srcPtr[idxBL]);
+    srcNeighborhood_f4->w = static_cast<float>(srcPtr[idxBR]);
+}
+
+
 // U8 loads for bilinear interpolation (12 U8 pixels)
 
 __device__ __forceinline__ void rpp_hip_interpolate3_bilinear_load_pkd3(uchar *srcPtr, uint srcStrideH, float2 *locSrcFloor_f2, int4 *roiPtrSrc_i4, d_float12 *srcNeighborhood_f12)
@@ -2221,6 +2556,111 @@ __device__ __forceinline__ void rpp_hip_interpolate3_bilinear_load_pkd3(half *sr
     srcNeighborhood_f12->f1[11] = __half2float(src2_h3.h1[2]);
 }
 
+// ADD TYPES FOR GPU FUSION
+__device__ __forceinline__
+void rpp_hip_interpolate3_bilinear_load_pkd3(uint16_t *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             d_float12 *srcNeighborhood_f12)
+{
+    int2 loc1, loc2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc1);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc2);
+
+    int2 rowOff = { loc1.y * (int)srcStrideH, loc2.y * (int)srcStrideH };
+    int2 colOff = { loc1.x * 3,             loc2.x * 3             };
+
+    // Top‑Left & Top‑Right
+    int idxTL = rowOff.x + colOff.x;
+    int idxTR = rowOff.x + colOff.y;
+    srcNeighborhood_f12->f1[0] = (float)srcPtr[idxTL];
+    srcNeighborhood_f12->f1[1] = (float)srcPtr[idxTR];
+    srcNeighborhood_f12->f1[4] = (float)srcPtr[idxTL + 1];
+    srcNeighborhood_f12->f1[5] = (float)srcPtr[idxTR + 1];
+    srcNeighborhood_f12->f1[8] = (float)srcPtr[idxTL + 2];
+    srcNeighborhood_f12->f1[9] = (float)srcPtr[idxTR + 2];
+
+    // Bottom‑Left & Bottom‑Right
+    int idxBL = rowOff.y + colOff.x;
+    int idxBR = rowOff.y + colOff.y;
+    srcNeighborhood_f12->f1[2]  = (float)srcPtr[idxBL];
+    srcNeighborhood_f12->f1[3]  = (float)srcPtr[idxBR];
+    srcNeighborhood_f12->f1[6]  = (float)srcPtr[idxBL + 1];
+    srcNeighborhood_f12->f1[7]  = (float)srcPtr[idxBR + 1];
+    srcNeighborhood_f12->f1[10] = (float)srcPtr[idxBL + 2];
+    srcNeighborhood_f12->f1[11] = (float)srcPtr[idxBR + 2];
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate3_bilinear_load_pkd3(int16_t *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             d_float12 *srcNeighborhood_f12)
+{
+    int2 loc1, loc2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc1);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc2);
+
+    int2 rowOff = { loc1.y * (int)srcStrideH, loc2.y * (int)srcStrideH };
+    int2 colOff = { loc1.x * 3,             loc2.x * 3             };
+
+    int idxTL = rowOff.x + colOff.x;
+    int idxTR = rowOff.x + colOff.y;
+    srcNeighborhood_f12->f1[0] = (float)srcPtr[idxTL];
+    srcNeighborhood_f12->f1[1] = (float)srcPtr[idxTR];
+    srcNeighborhood_f12->f1[4] = (float)srcPtr[idxTL + 1];
+    srcNeighborhood_f12->f1[5] = (float)srcPtr[idxTR + 1];
+    srcNeighborhood_f12->f1[8] = (float)srcPtr[idxTL + 2];
+    srcNeighborhood_f12->f1[9] = (float)srcPtr[idxTR + 2];
+
+    int idxBL = rowOff.y + colOff.x;
+    int idxBR = rowOff.y + colOff.y;
+    srcNeighborhood_f12->f1[2]  = (float)srcPtr[idxBL];
+    srcNeighborhood_f12->f1[3]  = (float)srcPtr[idxBR];
+    srcNeighborhood_f12->f1[6]  = (float)srcPtr[idxBL + 1];
+    srcNeighborhood_f12->f1[7]  = (float)srcPtr[idxBR + 1];
+    srcNeighborhood_f12->f1[10] = (float)srcPtr[idxBL + 2];
+    srcNeighborhood_f12->f1[11] = (float)srcPtr[idxBR + 2];
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate3_bilinear_load_pkd3(double *srcPtr,
+                                             uint srcStrideH,
+                                             float2 *locSrcFloor_f2,
+                                             int4 *roiPtrSrc_i4,
+                                             d_float12 *srcNeighborhood_f12)
+{
+    int2 loc1, loc2;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc1);
+    *locSrcFloor_f2 = *locSrcFloor_f2 + (float2)1.0f;
+    rpp_hip_roi_range_check(locSrcFloor_f2, roiPtrSrc_i4, &loc2);
+
+    int2 rowOff = { loc1.y * (int)srcStrideH, loc2.y * (int)srcStrideH };
+    int2 colOff = { loc1.x * 3,             loc2.x * 3             };
+
+    int idxTL = rowOff.x + colOff.x;
+    int idxTR = rowOff.x + colOff.y;
+    srcNeighborhood_f12->f1[0] = (float)srcPtr[idxTL];
+    srcNeighborhood_f12->f1[1] = (float)srcPtr[idxTR];
+    srcNeighborhood_f12->f1[4] = (float)srcPtr[idxTL + 1];
+    srcNeighborhood_f12->f1[5] = (float)srcPtr[idxTR + 1];
+    srcNeighborhood_f12->f1[8] = (float)srcPtr[idxTL + 2];
+    srcNeighborhood_f12->f1[9] = (float)srcPtr[idxTR + 2];
+
+    int idxBL = rowOff.y + colOff.x;
+    int idxBR = rowOff.y + colOff.y;
+    srcNeighborhood_f12->f1[2]  = (float)srcPtr[idxBL];
+    srcNeighborhood_f12->f1[3]  = (float)srcPtr[idxBR];
+    srcNeighborhood_f12->f1[6]  = (float)srcPtr[idxBL + 1];
+    srcNeighborhood_f12->f1[7]  = (float)srcPtr[idxBR + 1];
+    srcNeighborhood_f12->f1[10] = (float)srcPtr[idxBL + 2];
+    srcNeighborhood_f12->f1[11] = (float)srcPtr[idxBR + 2];
+}
+
 // BILINEAR INTERPOLATION EXECUTION HELPERS (templated execution routines for all bit depths)
 
 // float bilinear interpolation computation
@@ -2357,6 +2797,25 @@ __device__ __forceinline__ void rpp_hip_interpolate1_nearest_neighbor_load_pln1(
     *dstPtr = __half2float(*srcPtr);
 }
 
+// ADD TYPES FOR GPU FUSION
+__device__ __forceinline__
+void rpp_hip_interpolate1_nearest_neighbor_load_pln1(uint16_t *srcPtr, float *dstPtr)
+{
+    *dstPtr = static_cast<float>(*srcPtr);
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate1_nearest_neighbor_load_pln1(int16_t *srcPtr, float *dstPtr)
+{
+    *dstPtr = static_cast<float>(*srcPtr);
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate1_nearest_neighbor_load_pln1(double *srcPtr, float *dstPtr)
+{
+    *dstPtr = static_cast<float>(*srcPtr);
+}
+
 // U8 loads for nearest_neighbor interpolation (3 U8 pixels)
 
 __device__ __forceinline__ void rpp_hip_interpolate3_nearest_neighbor_load_pkd3(uchar *srcPtr, float3 *dstPtr_f3)
@@ -2389,6 +2848,37 @@ __device__ __forceinline__ void rpp_hip_interpolate3_nearest_neighbor_load_pkd3(
     dstPtr_f3->x = __half2float(src_h3.h1[0]);
     dstPtr_f3->y = __half2float(src_h3.h1[1]);
     dstPtr_f3->z = __half2float(src_h3.h1[2]);
+}
+
+// ADD TYPES FOR GPU FUSION
+__device__ __forceinline__
+void rpp_hip_interpolate3_nearest_neighbor_load_pkd3(uint16_t *srcPtr, float3 *dstPtr_f3)
+{
+    *dstPtr_f3 = make_float3(
+        static_cast<float>(srcPtr[0]),
+        static_cast<float>(srcPtr[1]),
+        static_cast<float>(srcPtr[2])
+    );
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate3_nearest_neighbor_load_pkd3(int16_t *srcPtr, float3 *dstPtr_f3)
+{
+    *dstPtr_f3 = make_float3(
+        static_cast<float>(srcPtr[0]),
+        static_cast<float>(srcPtr[1]),
+        static_cast<float>(srcPtr[2])
+    );
+}
+
+__device__ __forceinline__
+void rpp_hip_interpolate3_nearest_neighbor_load_pkd3(double *srcPtr, float3 *dstPtr_f3)
+{
+    *dstPtr_f3 = make_float3(
+        static_cast<float>(srcPtr[0]),
+        static_cast<float>(srcPtr[1]),
+        static_cast<float>(srcPtr[2])
+    );
 }
 
 // NEAREST NEIGHBOR INTERPOLATION EXECUTION HELPERS (templated execution routines for all bit depths)
@@ -2474,6 +2964,58 @@ __device__ __forceinline__ void rpp_hip_interpolate24_nearest_neighbor_pkd3(T *s
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[5], locPtrSrc_f16->f1[13], roiPtrSrc_i4, &(dst_f24->f3[5]));
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[6], locPtrSrc_f16->f1[14], roiPtrSrc_i4, &(dst_f24->f3[6]));
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[7], locPtrSrc_f16->f1[15], roiPtrSrc_i4, &(dst_f24->f3[7]));
+}
+
+// PKD3->PLN3 layout toggle kernel
+
+template <typename T>
+__global__ void convert_pkd3_pln3_hip_tensor(T *srcPtr,
+                                            uint2 srcStridesNH,
+                                            T *dstPtr,
+                                            uint3 dstStridesNCH,
+                                            RpptROIPtr roiTensorPtrSrc)
+{
+    int id_x = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x) * 8;
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;
+
+    if ((id_y >= roiTensorPtrSrc[id_z].xywhROI.roiHeight) || (id_x >= roiTensorPtrSrc[id_z].xywhROI.roiWidth))
+    {
+        return;
+    }
+
+    uint srcIdx = (id_z * srcStridesNH.x) + ((id_y + roiTensorPtrSrc[id_z].xywhROI.xy.y) * srcStridesNH.y) + (id_x + roiTensorPtrSrc[id_z].xywhROI.xy.x) * 3;
+    uint dstIdx = (id_z * dstStridesNCH.x) + (id_y * dstStridesNCH.z) + id_x;
+
+    d_float24 dst_f24;
+    rpp_hip_load24_pkd3_and_unpack_to_float24_pln3(srcPtr + srcIdx, &dst_f24);
+    rpp_hip_pack_float24_pln3_and_store24_pln3(dstPtr + dstIdx, dstStridesNCH.y, &dst_f24);
+}
+
+// PLN3->PKD3 layout toggle kernel
+
+template <typename T>
+__global__ void convert_pln3_pkd3_hip_tensor(T *srcPtr,
+                                             uint3 srcStridesNCH,
+                                             T *dstPtr,
+                                             uint2 dstStridesNH,
+                                             RpptROIPtr roiTensorPtrSrc)
+{
+    int id_x = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x) * 8;
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;
+
+    if ((id_y >= roiTensorPtrSrc[id_z].xywhROI.roiHeight) || (id_x >= roiTensorPtrSrc[id_z].xywhROI.roiWidth))
+    {
+        return;
+    }
+
+    uint srcIdx = (id_z * srcStridesNCH.x) + ((id_y + roiTensorPtrSrc[id_z].xywhROI.xy.y) * srcStridesNCH.z) + (id_x + roiTensorPtrSrc[id_z].xywhROI.xy.x);
+    uint dstIdx = (id_z * dstStridesNH.x) + (id_y * dstStridesNH.y) + id_x * 3;
+
+    d_float24 dst_f24;
+    rpp_hip_load24_pln3_and_unpack_to_float24_pkd3(srcPtr + srcIdx, srcStridesNCH.y, &dst_f24);
+    rpp_hip_pack_float24_pkd3_and_store24_pkd3(dstPtr + dstIdx, &dst_f24);
 }
 
 #endif // RPP_HIP_COMMON_H

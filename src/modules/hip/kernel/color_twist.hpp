@@ -247,6 +247,41 @@ __global__ void color_twist_pln3_pkd3_hip_tensor(T *srcPtr,
 }
 
 template <typename T>
+__global__ void color_twist_pln1_hip_tensor(T *srcPtr,
+                                            uint2 srcStridesNH,
+                                            T *dstPtr,
+                                            uint2 dstStridesNH,
+                                            float *brightnessTensor,
+                                            float *contrastTensor,
+                                            RpptROIPtr roiTensorPtrSrc)
+{
+    int id_x = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x) * 8;
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;
+
+    if ((id_y >= roiTensorPtrSrc[id_z].xywhROI.roiHeight) || (id_x >= roiTensorPtrSrc[id_z].xywhROI.roiWidth))
+    {
+        return;
+    }
+
+    uint srcIdx = (id_z * srcStridesNH.x) + ((id_y + roiTensorPtrSrc[id_z].xywhROI.xy.y) * srcStridesNH.y) + (id_x + roiTensorPtrSrc[id_z].xywhROI.xy.x);
+    uint dstIdx = (id_z * dstStridesNH.x) + (id_y * dstStridesNH.y) + id_x;
+
+    float brightness = brightnessTensor[id_z];
+    float contrast = contrastTensor[id_z];
+
+    d_float8 pix_f8;
+    rpp_hip_load8_and_unpack_to_float8(srcPtr + srcIdx, &pix_f8);
+
+    for (int i = 0; i < 8; i++)
+    {
+        pix_f8.f1[i] = (pix_f8.f1[i] * contrast) + brightness;
+    }
+
+    rpp_hip_pack_float8_and_store8(dstPtr + dstIdx, &pix_f8);
+}
+
+template <typename T>
 RppStatus hip_exec_color_twist_tensor(T *srcPtr,
                                      RpptDescPtr srcDescPtr,
                                      T *dstPtr,
@@ -332,6 +367,59 @@ RppStatus hip_exec_color_twist_tensor(T *srcPtr,
                                handle.GetInitHandle()->mem.mgpu.floatArr[1].floatmem,
                                handle.GetInitHandle()->mem.mgpu.floatArr[2].floatmem,
                                handle.GetInitHandle()->mem.mgpu.floatArr[3].floatmem,
+                               roiTensorPtrSrc);
+        }
+    }
+
+    return RPP_SUCCESS;
+}
+
+template <typename T>
+RppStatus hip_exec_color_twist_tensor_c1r(T *srcPtr,
+                                     RpptDescPtr srcDescPtr,
+                                     T *dstPtr,
+                                     RpptDescPtr dstDescPtr,
+                                     RpptROIPtr roiTensorPtrSrc,
+                                     RpptRoiType roiType,
+                                     rpp::Handle& handle)
+{
+    if (roiType == RpptRoiType::LTRB)
+        hip_exec_roi_converison_ltrb_to_xywh(roiTensorPtrSrc, handle);
+
+    if ((srcDescPtr->c == 1) && (dstDescPtr->c == 1))
+    {
+        int globalThreads_x = (dstDescPtr->strides.hStride + 7) >> 3;
+        int globalThreads_y = dstDescPtr->h;
+        int globalThreads_z = handle.GetBatchSize();
+
+        if ((srcDescPtr->layout == RpptLayout::NHWC) && (dstDescPtr->layout == RpptLayout::NHWC))
+        {
+            hipLaunchKernelGGL(color_twist_pln1_hip_tensor,
+                               dim3(ceil((float)globalThreads_x/LOCAL_THREADS_X), ceil((float)globalThreads_y/LOCAL_THREADS_Y), ceil((float)globalThreads_z/LOCAL_THREADS_Z)),
+                               dim3(LOCAL_THREADS_X, LOCAL_THREADS_Y, LOCAL_THREADS_Z),
+                               0,
+                               handle.GetStream(),
+                               srcPtr,
+                               make_uint2(srcDescPtr->strides.nStride, srcDescPtr->strides.hStride),
+                               dstPtr,
+                               make_uint2(dstDescPtr->strides.nStride, dstDescPtr->strides.hStride),
+                               handle.GetInitHandle()->mem.mgpu.floatArr[0].floatmem, // brightness
+                               handle.GetInitHandle()->mem.mgpu.floatArr[1].floatmem, // contrast
+                               roiTensorPtrSrc);
+        }
+        else if ((srcDescPtr->layout == RpptLayout::NCHW) && (dstDescPtr->layout == RpptLayout::NCHW))
+        {
+            hipLaunchKernelGGL(color_twist_pln1_hip_tensor,
+                               dim3(ceil((float)globalThreads_x/LOCAL_THREADS_X), ceil((float)globalThreads_y/LOCAL_THREADS_Y), ceil((float)globalThreads_z/LOCAL_THREADS_Z)),
+                               dim3(LOCAL_THREADS_X, LOCAL_THREADS_Y, LOCAL_THREADS_Z),
+                               0,
+                               handle.GetStream(),
+                               srcPtr,
+                               make_uint2(srcDescPtr->strides.nStride, srcDescPtr->strides.hStride),
+                               dstPtr,
+                               make_uint2(dstDescPtr->strides.nStride, dstDescPtr->strides.hStride),
+                               handle.GetInitHandle()->mem.mgpu.floatArr[0].floatmem, // brightness
+                               handle.GetInitHandle()->mem.mgpu.floatArr[1].floatmem, // contrast
                                roiTensorPtrSrc);
         }
     }

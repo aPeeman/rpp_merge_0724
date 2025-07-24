@@ -423,6 +423,409 @@ extern "C" __global__ void convert_batch_hsv_rgb(float *input,
     }
 }
 
+extern "C" __global__
+void cfarorgb_u8_batch(
+    unsigned char* srcPtr,
+    unsigned char* dstPtr,
+    unsigned int* xRoi,
+    unsigned int* widthRoi,
+    unsigned int* yRoi,
+    unsigned int* heightRoi,
+    unsigned int* srcHeight,
+    unsigned int* srcWidth,
+    unsigned int* maxWidth,
+    unsigned long long* batchIndex,
+    const unsigned int channel,
+    unsigned int* inc,
+    const int plnpkdind,
+    RppiBayerGridPosition rGrid)
+{
+    unsigned int bx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int by = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int bz = blockIdx.z;
+
+    int x0 = xRoi[bz], y0 = yRoi[bz];
+    int w = widthRoi[bz], h = heightRoi[bz];
+    unsigned int H = srcHeight[bz];
+    unsigned int W = srcWidth[bz];
+    unsigned long long imgOffset = batchIndex[bz];
+
+    if (bx < (unsigned)w && by < (unsigned)h)
+    {
+        int x = x0 + bx;
+        int y = y0 + by;
+
+        if (x < 0 || x >= (int)W || y < 0 || y >= (int)H) return;
+
+        int xm1 = (x > 0 ? x - 1 : 0);
+        int xp1 = (x + 1 < W ? x + 1 : W - 1);
+        int ym1 = (y > 0 ? y - 1 : 0);
+        int yp1 = (y + 1 < H ? y + 1 : H - 1);
+
+        #define SAMPLE_SAFE(sx, sy) srcPtr[imgOffset + (sy) * (*maxWidth) + (sx)]
+
+        unsigned char R, G, B;
+
+        // Nearest neighbor interpolation based on Bayer grid
+        switch (rGrid)
+        {
+            case RPPI_BAYER_BGGR:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // B pixel at (even, even)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);  
+                    R = SAMPLE_SAFE(xp1, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // G pixel in B row (odd, even)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xm1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // G pixel in R row (even, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xp1, y);  
+                    B = SAMPLE_SAFE(x, ym1);  
+                }
+                else {
+                    // R pixel at (odd, odd)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);  
+                    B = SAMPLE_SAFE(xm1, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_RGGB:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // R pixel at (even, even)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);  
+                    B = SAMPLE_SAFE(xp1, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // G pixel in R row (odd, even)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // G pixel in B row (even, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xp1, y);  
+                    R = SAMPLE_SAFE(x, ym1);  
+                }
+                else {
+                    // B pixel at (odd, odd)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);  
+                    R = SAMPLE_SAFE(xm1, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_GBRG:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // G pixel at (even, even)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xp1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // B pixel at (odd, even)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // R pixel at (even, odd)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);
+                    B = SAMPLE_SAFE(x, ym1);
+                }
+                else {
+                    // G pixel at (odd, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_GRBG:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // G pixel at (even, even)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xp1, y);
+                    B = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // R pixel at (odd, even)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // B pixel at (even, odd)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);
+                    R = SAMPLE_SAFE(x, ym1);
+                }
+                else {
+                    // G pixel at (odd, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xm1, y);
+                    R = SAMPLE_SAFE(x, ym1);
+                }
+                break;
+        }
+
+        unsigned long long pos = imgOffset + (by * (*maxWidth) + bx) * 3; // 3 channels for packed RGB
+        dstPtr[pos + 0] = R;
+        dstPtr[pos + 1] = G;
+        dstPtr[pos + 2] = B;
+
+        #undef SAMPLE_SAFE
+    }
+}
+
+
+extern "C" __global__
+void cfarorgb_u16_batch(
+    unsigned short* srcPtr,
+    unsigned short* dstPtr,
+    unsigned int* xRoi,
+    unsigned int* widthRoi,
+    unsigned int* yRoi,
+    unsigned int* heightRoi,
+    unsigned int* srcHeight,
+    unsigned int* srcWidth,
+    unsigned int* maxWidth,
+    unsigned long long* batchIndex,
+    const unsigned int channel,
+    unsigned int* inc,
+    const int plnpkdind,
+    RppiBayerGridPosition rGrid)
+{
+    unsigned int bx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int by = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int bz = blockIdx.z; 
+
+    int x0 = xRoi[bz], y0 = yRoi[bz];
+    int w = widthRoi[bz], h = heightRoi[bz];
+    unsigned int H = srcHeight[bz];
+    unsigned int W = srcWidth[bz];
+    unsigned long long imgOffset = batchIndex[bz];
+
+    if (bx < (unsigned)w && by < (unsigned)h)
+    {
+        int x = x0 + bx;
+        int y = y0 + by;
+
+        if (x < 0 || x >= (int)W || y < 0 || y >= (int)H) return;
+
+        int xm1 = (x > 0 ? x - 1 : 0);
+        int xp1 = (x + 1 < W ? x + 1 : W - 1);
+        int ym1 = (y > 0 ? y - 1 : 0);
+        int yp1 = (y + 1 < H ? y + 1 : H - 1);
+
+        #define SAMPLE_SAFE(sx, sy) srcPtr[imgOffset + (sy) * (*maxWidth) + (sx)]
+
+        unsigned short R, G, B;
+
+        // Nearest neighbor interpolation based on Bayer grid
+        switch (rGrid)
+        {
+            case RPPI_BAYER_BGGR:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // B pixel at (even, even)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);  
+                    R = SAMPLE_SAFE(xp1, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // G pixel in B row (odd, even)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xm1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // G pixel in R row (even, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xp1, y);  
+                    B = SAMPLE_SAFE(x, ym1);  
+                }
+                else {
+                    // R pixel at (odd, odd)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);  
+                    B = SAMPLE_SAFE(xm1, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_RGGB:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // R pixel at (even, even)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);  
+                    B = SAMPLE_SAFE(xp1, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // G pixel in R row (odd, even)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // G pixel in B row (even, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xp1, y);  
+                    R = SAMPLE_SAFE(x, ym1);  
+                }
+                else {
+                    // B pixel at (odd, odd)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);  
+                    R = SAMPLE_SAFE(xm1, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_GBRG:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // G pixel at (even, even)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xp1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // B pixel at (odd, even)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);
+                    R = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // R pixel at (even, odd)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y);
+                    B = SAMPLE_SAFE(x, ym1);
+                }
+                else {
+                    // G pixel at (odd, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, ym1);
+                }
+                break;
+
+            case RPPI_BAYER_GRBG:
+                if ((x % 2 == 0) && (y % 2 == 0)) {
+                    // G pixel at (even, even)
+                    G = SAMPLE_SAFE(x, y);
+                    R = SAMPLE_SAFE(xp1, y); 
+                    B = SAMPLE_SAFE(x, yp1); 
+                }
+                else if ((x % 2 == 1) && (y % 2 == 0)) {
+                    // R pixel at (odd, even)
+                    R = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xm1, y);
+                    B = SAMPLE_SAFE(x, yp1);
+                }
+                else if ((x % 2 == 0) && (y % 2 == 1)) {
+                    // B pixel at (even, odd)
+                    B = SAMPLE_SAFE(x, y);
+                    G = SAMPLE_SAFE(xp1, y); 
+                    R = SAMPLE_SAFE(x, ym1); 
+                }
+                else {
+                    // G pixel at (odd, odd)
+                    G = SAMPLE_SAFE(x, y);
+                    B = SAMPLE_SAFE(xm1, y); 
+                    R = SAMPLE_SAFE(x, ym1); 
+                }
+                break;
+        }
+
+        unsigned long long pos = imgOffset + (by * (*maxWidth) + bx) * 3; // 3 channels for packed RGB
+        dstPtr[pos + 0] = R;
+        dstPtr[pos + 1] = G;
+        dstPtr[pos + 2] = B;
+
+        #undef SAMPLE_SAFE
+    }
+}
+
+RppStatus hip_exec_cfarorgb_batch(Rpp8u *srcPtr, Rpp8u *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32u channel, Rpp32s plnpkdind, Rpp32u max_height, Rpp32u max_width, RppiRect srcROI, RppiBayerGridPosition rGrid)
+{
+    int localThreads_x = 32;
+    int localThreads_y = 32;
+    int localThreads_z = 1;
+    int globalThreads_x = (max_width + 31) & ~31;
+    int globalThreads_y = (max_height + 31) & ~31;
+    int globalThreads_z = handle.GetBatchSize();
+    auto d_roipoints = handle.GetInitHandle()->mem.mgpu.roiPoints;
+    auto d_srcSize = handle.GetInitHandle()->mem.mgpu.srcSize;
+    auto d_maxSrcSize = handle.GetInitHandle()->mem.mgpu.maxSrcSize;
+    auto d_batchIndex = handle.GetInitHandle()->mem.mgpu.srcBatchIndex;
+    auto d_inc = handle.GetInitHandle()->mem.mgpu.inc;
+
+    hipLaunchKernelGGL(cfarorgb_u8_batch,
+                       dim3(ceil((float)globalThreads_x/localThreads_x), ceil((float)globalThreads_y/localThreads_y), ceil((float)globalThreads_z/localThreads_z)),
+                       dim3(localThreads_x, localThreads_y, localThreads_z),
+                       0,
+                       handle.GetStream(),
+                       srcPtr,
+                       dstPtr,
+                       d_roipoints.x,
+                       d_roipoints.roiWidth,
+                       d_roipoints.y,
+                       d_roipoints.roiHeight,
+                       d_srcSize.height,
+                       d_srcSize.width,
+                       d_maxSrcSize.width,
+                       d_batchIndex,
+                       channel,
+                       d_inc,
+                       plnpkdind,
+					   rGrid);
+
+    return RPP_SUCCESS;
+}
+
+RppStatus hip_exec_cfarorgb_batch_u16(Rpp16u *srcPtr, Rpp16u *dstPtr, rpp::Handle& handle, RppiChnFormat chnFormat, Rpp32u channel, Rpp32s plnpkdind, Rpp32u max_height, Rpp32u max_width, RppiRect srcROI, RppiBayerGridPosition rGrid)
+{
+    int localThreads_x = 32;
+    int localThreads_y = 32;
+    int localThreads_z = 1;
+    int globalThreads_x = (max_width + 31) & ~31;
+    int globalThreads_y = (max_height + 31) & ~31;
+    int globalThreads_z = handle.GetBatchSize();
+    auto d_roipoints = handle.GetInitHandle()->mem.mgpu.roiPoints;
+    auto d_srcSize = handle.GetInitHandle()->mem.mgpu.srcSize;
+    auto d_maxSrcSize = handle.GetInitHandle()->mem.mgpu.maxSrcSize;
+    auto d_batchIndex = handle.GetInitHandle()->mem.mgpu.srcBatchIndex;
+    auto d_inc = handle.GetInitHandle()->mem.mgpu.inc;
+
+    hipLaunchKernelGGL(cfarorgb_u16_batch,
+                       dim3(ceil((float)globalThreads_x/localThreads_x), ceil((float)globalThreads_y/localThreads_y), ceil((float)globalThreads_z/localThreads_z)),
+                       dim3(localThreads_x, localThreads_y, localThreads_z),
+                       0,
+                       handle.GetStream(),
+                       srcPtr,
+                       dstPtr,
+                       d_roipoints.x,
+                       d_roipoints.roiWidth,
+                       d_roipoints.y,
+                       d_roipoints.roiHeight,
+                       d_srcSize.height,
+                       d_srcSize.width,
+                       d_maxSrcSize.width,
+                       d_batchIndex,
+                       channel,
+                       d_inc,
+                       plnpkdind,
+					   rGrid);
+
+    return RPP_SUCCESS;
+}
+
 RppStatus hip_exec_hueRGB_batch(Rpp8u *srcPtr, Rpp8u *dstPtr, rpp::Handle& handle, Rpp32s plnpkdind, Rpp32u max_height, Rpp32u max_width)
 {
     int localThreads_x = 32;
