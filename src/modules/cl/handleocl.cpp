@@ -1,28 +1,26 @@
-/*******************************************************************************
- *
- * MIT License
- *
- * Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- *******************************************************************************/
+/*
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 
 #include <chrono>
 #ifndef _WIN32
@@ -120,7 +118,7 @@ void dumpKernel(cl_kernel kern,
     buf[size] = 0;
     char fileName[1024];
     FILE* fp;
-    sprintf(fileName, "dump_%03d_command.txt", dumpOpenCLFileCounter);
+    snprintf(fileName, sizeof(fileName), "dump_%03d_command.txt", dumpOpenCLFileCounter);
     fp = fopen(fileName, "w");
     if(!fp)
     {
@@ -192,7 +190,7 @@ void dumpKernel(cl_kernel kern,
                fileName,
                work.c_str());
     }
-    sprintf(fileName, "dump_%03d_kernel.cl", dumpOpenCLFileCounter);
+    snprintf(fileName, sizeof(fileName), "dump_%03d_kernel.cl", dumpOpenCLFileCounter);
     fp = fopen(fileName, "w");
     if(!fp)
     {
@@ -370,7 +368,7 @@ struct HandleImpl
             this->initHandle->mem.mcpu.ucharArr[i].ucharmem = (Rpp8u *)malloc(sizeof(Rpp8u) * this->nBatchSize);
             this->initHandle->mem.mcpu.charArr[i].charmem = (Rpp8s *)malloc(sizeof(Rpp8s) * this->nBatchSize);
         }
-        this->initHandle->mem.mcpu.tempFloatmem = (Rpp32f *)malloc(sizeof(Rpp32f) * 99532800 * this->nBatchSize); // 7680 * 4320 * 3
+        this->initHandle->mem.mcpu.scratchBufferHost = (Rpp32f *)malloc(sizeof(Rpp32f) * 99532800 * this->nBatchSize); // 7680 * 4320 * 3
     }
 
     void PreInitializeBuffer()
@@ -606,7 +604,7 @@ void Handle::rpp_destroy_object_host()
         free(this->GetInitHandle()->mem.mcpu.charArr[i].charmem);
     }
 
-    free(this->GetInitHandle()->mem.mcpu.tempFloatmem);
+    free(this->GetInitHandle()->mem.mcpu.scratchBufferHost);
 }
 
 size_t Handle::GetBatchSize() const
@@ -727,7 +725,7 @@ KernelInvoke Handle::Run(Kernel k)
 auto Handle::GetKernels(const std::string& algorithm, const std::string& network_config)
 {
     auto kernels = this->GetKernelsImpl(algorithm, network_config);
-    
+
     std::vector<KernelInvoke> transformedKernels;
 
     transformedKernels.reserve(kernels.size());

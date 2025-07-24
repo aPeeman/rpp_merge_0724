@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include <stdio.h>
@@ -33,6 +35,8 @@ THE SOFTWARE.
 #include <fstream>
 #include <unistd.h>
 #include <dirent.h>
+#include <map>
+#include <iomanip>
 #include "rpp.h"
 #include "nifti1.h"
 
@@ -59,6 +63,21 @@ std::map<int, string> augmentationMap =
 {
     {0, "fused_multiply_add_scalar"},
     {1, "slice"},
+    {2, "add_scalar"},
+    {3, "subtract_scalar"},
+    {4, "flip_voxel"},
+    {5, "multiply_scalar"},
+    {6, "gaussian_noise_voxel"}
+};
+
+enum Augmentation {
+    FUSED_MULTIPLY_ADD_SCALAR = 0,
+    SLICE = 1,
+    ADD_SCALAR = 2,
+    SUBTRACT_SCALAR = 3,
+    FLIP_VOXEL = 4,
+    MULTIPLY_SCALAR = 5,
+    GAUSSIAN_NOISE_VOXEL = 6
 };
 
 void replicate_last_file_to_fill_batch(const string& lastFilePath, vector<string>& filePathVector, vector<string>& fileNamesVector, const string& lastFileName, int noOfFiles, int batchCount)
@@ -233,6 +252,51 @@ inline string set_function_type(int layoutType, int pln1OutTypeCase, int outputF
     }
 
     return funcType;
+}
+
+// initialize the roi, anchor and shape values required for slice
+void init_slice_voxel(RpptGenericDescPtr descriptorPtr3D, RpptROI3D *roiGenericSrcPtr, Rpp32u *roiTensor, Rpp32s *anchorTensor, Rpp32s *shapeTensor)
+{
+    if (descriptorPtr3D->layout == RpptLayout::NCDHW)
+    {
+        for(int i = 0; i < descriptorPtr3D->dims[0]; i++)
+        {
+            int idx1 = i * 4;
+            int idx2 = i * 8;
+            roiTensor[idx2] = anchorTensor[idx1] = 0;
+            roiTensor[idx2 + 1] = anchorTensor[idx1 + 1] = roiGenericSrcPtr[i].xyzwhdROI.xyz.z;
+            roiTensor[idx2 + 2] = anchorTensor[idx1 + 2] = roiGenericSrcPtr[i].xyzwhdROI.xyz.y;
+            roiTensor[idx2 + 3] = anchorTensor[idx1 + 3] = roiGenericSrcPtr[i].xyzwhdROI.xyz.x;
+            roiTensor[idx2 + 4] = descriptorPtr3D->dims[1];
+            roiTensor[idx2 + 5] = roiGenericSrcPtr[i].xyzwhdROI.roiDepth;
+            roiTensor[idx2 + 6] = roiGenericSrcPtr[i].xyzwhdROI.roiHeight;
+            roiTensor[idx2 + 7] = roiGenericSrcPtr[i].xyzwhdROI.roiWidth;
+            shapeTensor[idx1] = roiTensor[idx2 + 4];
+            shapeTensor[idx1 + 1] = roiTensor[idx2 + 5] / 2;
+            shapeTensor[idx1 + 2] = roiTensor[idx2 + 6] / 2;
+            shapeTensor[idx1 + 3] = roiTensor[idx2 + 7] / 2;
+        }
+    }
+    else if(descriptorPtr3D->layout == RpptLayout::NDHWC)
+    {
+        for(int i = 0; i < descriptorPtr3D->dims[0]; i++)
+        {
+            int idx1 = i * 4;
+            int idx2 = i * 8;
+            roiTensor[idx2] = anchorTensor[idx1] = roiGenericSrcPtr[i].xyzwhdROI.xyz.z;
+            roiTensor[idx2 + 1] = anchorTensor[idx1 + 1] = roiGenericSrcPtr[i].xyzwhdROI.xyz.y;
+            roiTensor[idx2 + 2] = anchorTensor[idx1 + 2] = roiGenericSrcPtr[i].xyzwhdROI.xyz.x;
+            roiTensor[idx2 + 3] = anchorTensor[idx1 + 3] = 0;
+            roiTensor[idx2 + 4] = roiGenericSrcPtr[i].xyzwhdROI.roiDepth;
+            roiTensor[idx2 + 5] = roiGenericSrcPtr[i].xyzwhdROI.roiHeight;
+            roiTensor[idx2 + 6] = roiGenericSrcPtr[i].xyzwhdROI.roiWidth;
+            roiTensor[idx2 + 7] = descriptorPtr3D->dims[4];
+            shapeTensor[idx1] = roiTensor[idx2 + 4] / 2;
+            shapeTensor[idx1 + 1] = roiTensor[idx2 + 5] / 2;
+            shapeTensor[idx1 + 2] = roiTensor[idx2 + 6] / 2;
+            shapeTensor[idx1 + 3] = roiTensor[idx2 + 7];
+        }
+    }
 }
 
 // reads nifti-1 header file
@@ -664,7 +728,7 @@ inline void compare_output(Rpp32f* output, Rpp64u oBufferSize, string func, int 
     FILE *fp;
     fp = fopen(refFile.c_str(), "rb");
     if (fp == NULL)
-        printf("Error opening file");
+        std::cout << "Error opening file";
 
     fseek(fp, 0, SEEK_END);
     long fsize = ftell(fp);

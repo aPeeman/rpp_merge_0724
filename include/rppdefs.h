@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef RPPDEFS_H
@@ -31,9 +33,25 @@ THE SOFTWARE.
 
 #include <stddef.h>
 #include <cmath>
+#ifdef HIP_COMPILE
+    #include <hip/hip_fp16.h>
+#endif // HIP_COMPILE
+#include <half/half.hpp>
+using halfhpp = half_float::half;
+typedef halfhpp Rpp16f;
+
 #ifdef OCL_COMPILE
 #include <CL/cl.h>
 #endif
+
+#if _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#include <smmintrin.h>
+#include <immintrin.h>
+#endif
+#include<vector>
 
 /*! \brief 8 bit unsigned char minimum \ingroup group_rppdefs \page subpage_rpp */
 #define RPP_MIN_8U      ( 0 )
@@ -41,10 +59,29 @@ THE SOFTWARE.
 #define RPP_MAX_8U      ( 255 )
 /*! \brief RPP maximum dimensions in tensor \ingroup group_rppdefs \page subpage_rppt */
 #define RPPT_MAX_DIMS   ( 5 )
+/*! \brief RPP maximum channels in audio tensor \ingroup group_rppdefs \page subpage_rppt */
+#define RPPT_MAX_AUDIO_CHANNELS   ( 16 )
 
-const float ONE_OVER_6 = 1.0f / 6;
-const float ONE_OVER_3 = 1.0f / 3;
-const float ONE_OVER_255 = 1.0f / 255;
+#define CHECK_RETURN_STATUS(x) do { \
+  int retval = (x); \
+  if (retval != 0) { \
+    fprintf(stderr, "Runtime error: %s returned %d at %s:%d", #x, retval, __FILE__, __LINE__); \
+    exit(-1); \
+  } \
+} while (0)
+
+#ifdef HIP_COMPILE
+#include <hip/hip_runtime.h>
+#define RPP_HOST_DEVICE __host__ __device__
+#else
+#define RPP_HOST_DEVICE
+#endif
+
+const float ONE_OVER_6                      = 1.0f / 6;
+const float ONE_OVER_3                      = 1.0f / 3;
+const float ONE_OVER_255                    = 1.0f / 255;
+const uint MMS_MAX_SCRATCH_MEMORY           = 115293120; // maximum scratch memory size (in number of floats) needed for MMS buffer in RNNT training
+const uint SPECTROGRAM_MAX_SCRATCH_MEMORY   = 372877312; // maximum scratch memory size (in number of floats) needed for spectrogram HIP kernel in RNNT training
 
 /******************** RPP typedefs ********************/
 
@@ -110,10 +147,24 @@ typedef enum
     RPP_ERROR_INSUFFICIENT_DST_BUFFER_LENGTH    = -14,
     /*! \brief Invalid datatype \ingroup group_rppdefs */
     RPP_ERROR_INVALID_PARAMETER_DATATYPE        = -15,
-    /*! \brief Not enough memory \ingroup group_rppdefs */
+    /*! \brief Not enough memory to write outputs, as per dim-lengths and strides set in descriptor \ingroup group_rppdefs */
     RPP_ERROR_NOT_ENOUGH_MEMORY         = -16,
     /*! \brief Out of bound source ROI \ingroup group_rppdefs */
-    RPP_ERROR_OUT_OF_BOUND_SRC_ROI      = -17
+    RPP_ERROR_OUT_OF_BOUND_SRC_ROI      = -17,
+    /*! \brief src and dst layout mismatch \ingroup group_rppdefs */
+    RPP_ERROR_LAYOUT_MISMATCH           = -18,
+    /*! \brief Number of channels is invalid. (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_INVALID_CHANNELS          = -19,
+    /*! \brief Invalid output tile length (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_INVALID_OUTPUT_TILE_LENGTH    = -20,
+    /*! \brief Shared memory size needed is beyond the bounds (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_OUT_OF_BOUND_SHARED_MEMORY_SIZE    = -21,
+    /*! \brief Scratch memory size needed is beyond the bounds (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_OUT_OF_BOUND_SCRATCH_MEMORY_SIZE    = -22,
+    /*! \brief Number of src dims is invalid. (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_INVALID_SRC_DIMS          = -23,
+    /*! \brief Number of dst dims is invalid. (Needs to adhere to function specification.) \ingroup group_rppdefs */
+    RPP_ERROR_INVALID_DST_DIMS          = -24
 } RppStatus;
 
 /*! \brief RPP rppStatus_t type enums
@@ -190,6 +241,14 @@ typedef struct
 {
     Rpp32f data[6];
 } Rpp32f6;
+
+/*! \brief RPP 9 float vector
+ * \ingroup group_rppdefs
+ */
+typedef struct
+{
+    Rpp32f data[9];
+} Rpp32f9;
 
 /*! \brief RPP 24 signed int vector
  * \ingroup group_rppdefs
@@ -296,7 +355,7 @@ typedef struct
     int y;
 } RppiPoint;
 
-/*! \brief RPPI Image 2D Rectangle (XYWH format) type struct
+/*! \brief RPPI Image 3D point type struct
  * \ingroup group_rppdefs
  */
 typedef struct
@@ -306,6 +365,9 @@ typedef struct
     int z;
 } RppiPoint3D;
 
+/*! \brief RPPI Image 2D Rectangle (XYWH format) type struct
+ * \ingroup group_rppdefs
+ */
 typedef struct
 {
     int x;
@@ -343,10 +405,13 @@ typedef enum
  */
 typedef enum
 {
-    NCHW,
-    NHWC,
-    NCDHW,
-    NDHWC
+    NCHW,   // BatchSize-Channels-Height-Width
+    NHWC,   // BatchSize-Height-Width-Channels
+    NCDHW,  // BatchSize-Channels-Depth-Height-Width
+    NDHWC,  // BatchSize-Depth-Height-Width-Channels
+    NHW,    // BatchSize-Height-Width
+    NFT,    // BatchSize-Frequency-Time -> Frequency Major used for Spectrogram / MelfilterBank
+    NTF     // BatchSize-Time-Frequency -> Time Major used for Spectrogram / MelfilterBank
 } RpptLayout;
 
 /*! \brief RPPT Tensor 2D ROI type enum
@@ -358,7 +423,7 @@ typedef enum
     XYWH     // X-Y-Width-Height
 } RpptRoiType;
 
-/*! \brief RPPT Tensor subpixel layout type enum
+/*! \brief RPPT Tensor 3D ROI type enum
  * \ingroup group_rppdefs
  */
 typedef enum
@@ -367,6 +432,9 @@ typedef enum
     XYZWHD     // X-Y-Z-Width-Height-Depth
 } RpptRoi3DType;
 
+/*! \brief RPPT Tensor subpixel layout type enum
+ * \ingroup group_rppdefs
+ */
 typedef enum
 {
     RGBtype,
@@ -396,6 +464,15 @@ typedef enum
     REFLECT
 } RpptAudioBorderType;
 
+/*! \brief RPPT Mel Scale Formula
+ * \ingroup group_rppdefs
+ */
+typedef enum
+{
+    SLANEY = 0,  // Follows Slaney’s MATLAB Auditory Modelling Work behavior
+    HTK,         // Follows O’Shaughnessy’s book formula, consistent with Hidden Markov Toolkit(HTK), m = 2595 * log10(1 + (f/700))
+} RpptMelScaleFormula;
+
 /*! \brief RPPT Tensor 2D ROI LTRB struct
  * \ingroup group_rppdefs
  */
@@ -404,6 +481,16 @@ typedef struct
     RppiPoint lt, rb;    // Left-Top point and Right-Bottom point
 
 } RpptRoiLtrb;
+
+/*! \brief RPPT Tensor Channel Offsets struct
+ * \ingroup group_rppdefs
+ */
+typedef struct
+{
+    RppiPoint r;
+    RppiPoint g;
+    RppiPoint b;
+} RpptChannelOffsets;
 
 /*! \brief RPPT Tensor 3D ROI LTFRBB struct
  * \ingroup group_rppdefs
@@ -478,7 +565,7 @@ typedef struct
     RpptLayout layout;
 } RpptDesc, *RpptDescPtr;
 
-/*! \brief RPPT Tensor 8-bit uchar RGB type struct
+/*! \brief RPPT Tensor Generic descriptor type struct
  * \ingroup group_rppdefs
  */
 typedef struct
@@ -491,6 +578,9 @@ typedef struct
     RpptLayout layout;
 } RpptGenericDesc, *RpptGenericDescPtr;
 
+/*! \brief RPPT Tensor 8-bit uchar RGB type struct
+ * \ingroup group_rppdefs
+ */
 typedef struct
 {
     Rpp8u R;
@@ -632,6 +722,111 @@ typedef struct GenericFilter
     }
 }GenericFilter;
 
+/*! \brief RPPT Tensor RpptResamplingWindow type struct
+ * \ingroup group_rppdefs
+ */
+typedef struct RpptResamplingWindow
+{
+    inline RPP_HOST_DEVICE void input_range(Rpp32f x, Rpp32s *loc0, Rpp32s *loc1)
+    {
+        Rpp32s xc = std::ceil(x);
+        *loc0 = xc - lobes;
+        *loc1 = xc + lobes;
+    }
+
+    inline Rpp32f operator()(Rpp32f x)
+    {
+        Rpp32f locRaw = x * scale + center;
+        Rpp32s locFloor = std::floor(locRaw);
+        Rpp32f weight = locRaw - locFloor;
+        locFloor = std::max(std::min(locFloor, lookupSize - 2), 0);
+        Rpp32f current = lookup[locFloor];
+        Rpp32f next = lookup[locFloor + 1];
+        return current + weight * (next - current);
+    }
+
+    inline __m128 operator()(__m128 x)
+    {
+        __m128 pLocRaw = _mm_add_ps(_mm_mul_ps(x, pScale), pCenter);
+        __m128i pxLocFloor = _mm_cvttps_epi32(pLocRaw);
+        __m128 pLocFloor = _mm_cvtepi32_ps(pxLocFloor);
+        __m128 pWeight = _mm_sub_ps(pLocRaw, pLocFloor);
+        Rpp32s idx[4];
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(idx), pxLocFloor);
+        __m128 pCurrent = _mm_setr_ps(lookup[idx[0]], lookup[idx[1]], lookup[idx[2]], lookup[idx[3]]);
+        __m128 pNext = _mm_setr_ps(lookup[idx[0] + 1], lookup[idx[1] + 1], lookup[idx[2] + 1], lookup[idx[3] + 1]);
+        return _mm_add_ps(pCurrent, _mm_mul_ps(pWeight, _mm_sub_ps(pNext, pCurrent)));
+    }
+
+    Rpp32f scale = 1, center = 1;
+    Rpp32s lobes = 0, coeffs = 0;
+    Rpp32s lookupSize = 0;
+    Rpp32f *lookupPinned = nullptr;
+    std::vector<Rpp32f> lookup;
+    __m128 pCenter, pScale;
+} RpptResamplingWindow;
+
+/*! \brief Base class for Mel scale conversions.
+ * \ingroup group_rppdefs
+ */
+struct BaseMelScale
+{
+    public:
+        inline RPP_HOST_DEVICE virtual Rpp32f hz_to_mel(Rpp32f hz) = 0;
+        inline RPP_HOST_DEVICE virtual Rpp32f mel_to_hz(Rpp32f mel) = 0;
+        virtual ~BaseMelScale() = default;
+};
+
+/*! \brief Derived class for HTK Mel scale conversions.
+ * \ingroup group_rppdefs
+ */
+struct HtkMelScale : public BaseMelScale
+{
+    inline RPP_HOST_DEVICE Rpp32f hz_to_mel(Rpp32f hz) { return 1127.0f * std::log(1.0f + (hz / 700.0f)); }
+    inline RPP_HOST_DEVICE Rpp32f mel_to_hz(Rpp32f mel) { return 700.0f * (std::exp(mel / 1127.0f) - 1.0f); }
+    public:
+        ~HtkMelScale() {};
+};
+
+/*! \brief Derived class for Slaney Mel scale conversions.
+ * \ingroup group_rppdefs
+ */
+struct SlaneyMelScale : public BaseMelScale
+{
+    const Rpp32f freqLow = 0;
+    const Rpp32f fsp = 66.666667f;
+    const Rpp32f minLogHz = 1000.0;
+    const Rpp32f minLogMel = (minLogHz - freqLow) / fsp;
+    const Rpp32f stepLog = 0.068751777;  // Equivalent to std::log(6.4) / 27.0;
+
+    const Rpp32f invMinLogHz = 0.001f;
+    const Rpp32f invStepLog = 1.0f / stepLog;
+    const Rpp32f invFsp = 1.0f / fsp;
+
+    inline RPP_HOST_DEVICE Rpp32f hz_to_mel(Rpp32f hz)
+    {
+        Rpp32f mel = 0.0f;
+        if (hz >= minLogHz)
+            mel = minLogMel + std::log(hz * invMinLogHz) * invStepLog;
+        else
+            mel = (hz - freqLow) * invFsp;
+
+        return mel;
+    }
+
+    inline RPP_HOST_DEVICE Rpp32f mel_to_hz(Rpp32f mel)
+    {
+        Rpp32f hz = 0.0f;
+        if (mel >= minLogMel)
+            hz = minLogHz * std::exp(stepLog * (mel - minLogMel));
+        else
+            hz = freqLow + mel * fsp;
+        return hz;
+    }
+    public:
+        ~SlaneyMelScale() {};
+};
+
 /******************** HOST memory typedefs ********************/
 
 /*! \brief RPP HOST 32-bit float memory
@@ -730,7 +925,7 @@ typedef struct {
     Rpp64u *dstBatchIndex;
     Rpp32u *inc;
     Rpp32u *dstInc;
-    Rpp32f *tempFloatmem;
+    Rpp32f *scratchBufferHost;
 } memCPU;
 
 #ifdef OCL_COMPILE
@@ -944,11 +1139,12 @@ typedef struct
     hipMemRpp8u ucharArr[10];
     hipMemRpp8s charArr[10];
     hipMemRpptRGB rgbArr;
-    hipMemRpp32f maskArr;
+    hipMemRpp32f scratchBufferHip;
     Rpp64u* srcBatchIndex;
     Rpp64u* dstBatchIndex;
     Rpp32u* inc;
     Rpp32u* dstInc;
+    hipMemRpp32f scratchBufferPinned;
 } memGPU;
 
 /*! \brief RPP HIP-HOST memory management

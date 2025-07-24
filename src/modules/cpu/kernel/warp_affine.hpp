@@ -1,5 +1,7 @@
 /*
-Copyright (c) 2019 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+MIT License
+
+Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,16 +10,16 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "rppdefs.h"
@@ -216,7 +218,7 @@ RppStatus warp_affine_nn_u8_u8_host_tensor(Rpp8u *srcPtr,
                     __m128i pRow;
                     compute_generic_nn_srclocs_and_validate_sse(pSrcY, pSrcX, pRoiLTRB, pSrcStrideH, srcLoc, invalidLoad, true);
                     rpp_simd_load(rpp_generic_nn_load_u8pkd3, srcPtrChannel, srcLoc, invalidLoad, pRow);
-                    rpp_simd_store(rpp_store4_u8_to_u8, dstPtrTemp, pRow);
+                    rpp_simd_store(rpp_store12_u8_to_u8, dstPtrTemp, pRow);
                     compute_warp_affine_src_loc_next_term_sse(pSrcY, pSrcX, pAffineMatrixTerm3Incr, pAffineMatrixTerm0Incr);
                     dstPtrTemp += vectorIncrementPkd;
                 }
@@ -259,7 +261,7 @@ RppStatus warp_affine_nn_u8_u8_host_tensor(Rpp8u *srcPtr,
                     {
                         __m128i pRow;
                         rpp_simd_load(rpp_generic_nn_load_u8pln1, srcPtrTempChn, srcLoc, invalidLoad, pRow);
-                        rpp_simd_store(rpp_store4_u8_to_u8, dstPtrTempChn, pRow);
+                        rpp_simd_store(rpp_storeu_si32, dstPtrTempChn, pRow);
                         srcPtrTempChn += srcDescPtr->strides.cStride;
                         dstPtrTempChn += dstDescPtr->strides.cStride;
                     }
@@ -670,7 +672,7 @@ RppStatus warp_affine_nn_i8_i8_host_tensor(Rpp8s *srcPtr,
                     __m128i pRow;
                     compute_generic_nn_srclocs_and_validate_sse(pSrcY, pSrcX, pRoiLTRB, pSrcStrideH, srcLoc, invalidLoad, true);
                     rpp_simd_load(rpp_generic_nn_load_i8pkd3, srcPtrChannel, srcLoc, invalidLoad, pRow);
-                    rpp_simd_store(rpp_store4_i8_to_i8, dstPtrTemp, pRow);
+                    rpp_simd_store(rpp_store12_i8_to_i8, dstPtrTemp, pRow);
                     compute_warp_affine_src_loc_next_term_sse(pSrcY, pSrcX, pAffineMatrixTerm3Incr, pAffineMatrixTerm0Incr);
                     dstPtrTemp += vectorIncrementPkd;
                 }
@@ -713,7 +715,7 @@ RppStatus warp_affine_nn_i8_i8_host_tensor(Rpp8s *srcPtr,
                     {
                         __m128i pRow;
                         rpp_simd_load(rpp_generic_nn_load_i8pln1, srcPtrTempChn, srcLoc, invalidLoad, pRow);
-                        rpp_simd_store(rpp_store4_i8_to_i8, dstPtrTempChn, pRow);
+                        rpp_simd_store(rpp_storeu_si32, dstPtrTempChn, pRow);
                         srcPtrTempChn += srcDescPtr->strides.cStride;
                         dstPtrTempChn += dstDescPtr->strides.cStride;
                     }
