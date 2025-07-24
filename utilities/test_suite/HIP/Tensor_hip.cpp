@@ -1304,3 +1304,4 @@ int main(int argc, char **argv)
     CHECK(hipFree(d_output));
     return 0;
 }
+

@@ -34,7 +34,7 @@ int main(int argc, char * argv[])
 
     if (argc < MIN_ARG_COUNT)
     {
-        printf("\nImproper Usage! Needs all arguments!\n");
+        cout << "\nImproper Usage! Needs all arguments!\n";
         exit(1);
     }
 
@@ -50,6 +50,8 @@ int main(int argc, char * argv[])
     inputBitDepth = atoi(argv[10]);
     string scriptPath = argv[11];
 
+    bool nonQACase = (testCase == 6);
+
     if ((layoutType < 0) || (layoutType > 2))
     {
         fprintf(stdout, "\nUsage: %s <header file> <data file> <layoutType = 0 - PKD3/ 1 - PLN3/ 2 - PLN1>\n", argv[0]);
@@ -57,7 +59,7 @@ int main(int argc, char * argv[])
     }
     if(batchSize > MAX_BATCH_SIZE)
     {
-        std::cout << "\n Batchsize should be less than or equal to "<< MAX_BATCH_SIZE << " Aborting!";
+        cout << "\n Batchsize should be less than or equal to "<< MAX_BATCH_SIZE << " Aborting!";
         exit(0);
     }
 
@@ -65,7 +67,7 @@ int main(int argc, char * argv[])
     if (funcName.empty())
     {
         if (testType == 0)
-            printf("\ncase %d is not supported\n", testCase);
+            cout << "\ncase " << testCase << " is not supported\n";
 
         return -1;
     }
@@ -122,7 +124,7 @@ int main(int argc, char * argv[])
 
     // set src/dst xyzwhd ROI tensors
     void *pinnedMemROI;
-    CHECK(hipHostMalloc(&pinnedMemROI, noOfFiles * sizeof(RpptROI3D)));
+    CHECK_RETURN_STATUS(hipHostMalloc(&pinnedMemROI, noOfFiles * sizeof(RpptROI3D)));
     RpptROI3D *roiGenericSrcPtr = reinterpret_cast<RpptROI3D *>(pinnedMemROI);
 
     // Set buffer sizes in pixels for src/dst
@@ -139,18 +141,21 @@ int main(int argc, char * argv[])
 
     // Allocate hip memory in float for RPP strided buffer
     void *d_inputF32, *d_outputF32;
-    CHECK(hipMalloc(&d_inputF32, iBufferSizeInBytes));
-    CHECK(hipMalloc(&d_outputF32, oBufferSizeInBytes));
+    CHECK_RETURN_STATUS(hipMalloc(&d_inputF32, iBufferSizeInBytes));
+    CHECK_RETURN_STATUS(hipMalloc(&d_outputF32, oBufferSizeInBytes));
 
     // set argument tensors
     void *pinnedMemArgs;
-    CHECK(hipHostMalloc(&pinnedMemArgs, 2 * noOfFiles * sizeof(Rpp32f)));
+    CHECK_RETURN_STATUS(hipHostMalloc(&pinnedMemArgs, 2 * noOfFiles * sizeof(Rpp32f)));
 
-    // Set the number of threads to be used by OpenMP pragma for RPP batch processing on host.
-    // If numThreads value passed is 0, number of OpenMP threads used by RPP will be set to batch size
-    Rpp32u numThreads = 0;
+    // arguments required for slice
+    Rpp32s *anchorTensor = NULL, *shapeTensor = NULL;
+    Rpp32u *roiTensor = NULL;
+
     rppHandle_t handle;
-    rppCreateWithBatchSize(&handle, noOfFiles, numThreads);
+    hipStream_t stream;
+    CHECK_RETURN_STATUS(hipStreamCreate(&stream));
+    rppCreateWithStreamAndBatchSize(&handle, stream, batchSize);
 
     // Run case-wise RPP API and measure time
     int missingFuncFlag = 0;
@@ -167,11 +172,11 @@ int main(int argc, char * argv[])
         inputU8 = static_cast<Rpp8u *>(calloc(iBufferSizeU8, 1));
         outputU8 = static_cast<Rpp8u *>(calloc(iBufferSizeU8, 1));
 
-        CHECK(hipMalloc(&d_inputU8, iBufferSizeU8));
-        CHECK(hipMalloc(&d_outputU8, iBufferSizeU8));
+        CHECK_RETURN_STATUS(hipMalloc(&d_inputU8, iBufferSizeU8));
+        CHECK_RETURN_STATUS(hipMalloc(&d_outputU8, iBufferSizeU8));
     }
 
-    printf("\nRunning %s %d times (each time with a batch size of %d images) and computing mean statistics...", funcName.c_str(), numRuns, batchSize);
+    cout << "\nRunning " << funcName << " " << numRuns << " times (each time with a batch size of " << batchSize << " images) and computing mean statistics...";
     for(int iterCount = 0; iterCount < noOfIterations; iterCount++)
     {
         vector<string>::const_iterator dataFilePathStart = dataFilePath.begin() + (iterCount * batchSize);
@@ -221,18 +226,18 @@ int main(int argc, char * argv[])
         {
             for(int i = 0; i < iBufferSizeU8; i++)
                 inputU8[i] = std::min(std::max(static_cast<unsigned char>(inputF32[i]), static_cast<unsigned char>(0)), static_cast<unsigned char>(255));
-            CHECK(hipMemcpy(d_inputU8, inputU8, iBufferSizeU8, hipMemcpyHostToDevice));
+            CHECK_RETURN_STATUS(hipMemcpy(d_inputU8, inputU8, iBufferSizeU8, hipMemcpyHostToDevice));
         }
 
         //Copy input buffer to hip
-        CHECK(hipMemcpy(d_inputF32, inputF32, iBufferSizeInBytes, hipMemcpyHostToDevice));
+        CHECK_RETURN_STATUS(hipMemcpy(d_inputF32, inputF32, iBufferSizeInBytes, hipMemcpyHostToDevice));
 
         for (int perfRunCount = 0; perfRunCount < numRuns; perfRunCount++)
         {
             double startWallTime, endWallTime;
             switch (testCase)
             {
-                case 0:
+                case FUSED_MULTIPLY_ADD_SCALAR:
                 {
                     testCaseName = "fused_multiply_add_scalar";
                     Rpp32f *mulTensor = reinterpret_cast<Rpp32f *>(pinnedMemArgs);
@@ -252,21 +257,30 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 1:
+                case SLICE:
                 {
                     testCaseName = "slice";
+                    if(anchorTensor == NULL)
+                        CHECK_RETURN_STATUS(hipHostMalloc(&anchorTensor, batchSize * 4 * sizeof(Rpp32s)));
+                    if(shapeTensor == NULL)
+                        CHECK_RETURN_STATUS(hipHostMalloc(&shapeTensor, batchSize * 4 * sizeof(Rpp32s)));
+                    if(roiTensor == NULL)
+                        CHECK_RETURN_STATUS(hipHostMalloc(&roiTensor, batchSize * 8 * sizeof(Rpp32u)));
+                    bool enablePadding = false;
+                    auto fillValue = 0;
+                    init_slice_voxel(descriptorPtr3D, roiGenericSrcPtr, roiTensor, anchorTensor, shapeTensor);
 
                     startWallTime = omp_get_wtime();
                     if (inputBitDepth == 0)
-                        rppt_slice_gpu(d_inputU8, descriptorPtr3D, d_outputU8, descriptorPtr3D, roiGenericSrcPtr, roiTypeSrc, handle);
+                        rppt_slice_gpu(d_inputU8, descriptorPtr3D, d_outputU8, descriptorPtr3D, anchorTensor, shapeTensor, &fillValue, enablePadding, roiTensor, handle);
                     else if(inputBitDepth == 2)
-                        rppt_slice_gpu(d_inputF32, descriptorPtr3D, d_outputF32, descriptorPtr3D, roiGenericSrcPtr, roiTypeSrc, handle);
+                        rppt_slice_gpu(d_inputF32, descriptorPtr3D, d_outputF32, descriptorPtr3D, anchorTensor, shapeTensor, &fillValue, enablePadding, roiTensor, handle);
                     else
                         missingFuncFlag = 1;
 
                     break;
                 }
-                case 2:
+                case ADD_SCALAR:
                 {
                     testCaseName = "add_scalar";
                     Rpp32f addTensor[batchSize];
@@ -282,7 +296,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 3:
+                case SUBTRACT_SCALAR:
                 {
                     testCaseName = "subtract_scalar";
                     Rpp32f subtractTensor[batchSize];
@@ -298,7 +312,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 4:
+                case FLIP_VOXEL:
                 {
                     testCaseName = "flip_voxel";
                     Rpp32u horizontalTensor[batchSize];
@@ -322,7 +336,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 5:
+                case MULTIPLY_SCALAR:
                 {
                     testCaseName = "multiply_scalar";
                     Rpp32f mulTensor[batchSize];
@@ -338,6 +352,29 @@ int main(int argc, char * argv[])
 
                     break;
                 }
+                case GAUSSIAN_NOISE_VOXEL:
+                {
+                    testCaseName = "gaussian_noise_voxel";
+                    Rpp32f *meanTensor = reinterpret_cast<Rpp32f *>(pinnedMemArgs);
+                    Rpp32f *stdDevTensor = meanTensor + batchSize;
+
+                    Rpp32u seed = 1255459;
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        meanTensor[i] = 1.4;
+                        stdDevTensor[i] = 0.6;
+                    }
+
+                    startWallTime = omp_get_wtime();
+                    if (inputBitDepth == 0)
+                        rppt_gaussian_noise_voxel_gpu(d_inputU8, descriptorPtr3D, d_outputU8, descriptorPtr3D, meanTensor, stdDevTensor, seed, roiGenericSrcPtr, roiTypeSrc, handle);
+                    else if (inputBitDepth == 2)
+                        rppt_gaussian_noise_voxel_gpu(d_inputF32, descriptorPtr3D, d_outputF32, descriptorPtr3D, meanTensor, stdDevTensor, seed, roiGenericSrcPtr, roiTypeSrc, handle);
+                    else
+                        missingFuncFlag = 1;
+
+                    break;
+                }
                 default:
                 {
                     missingFuncFlag = 1;
@@ -345,7 +382,7 @@ int main(int argc, char * argv[])
                 }
             }
 
-            CHECK(hipDeviceSynchronize());
+            CHECK_RETURN_STATUS(hipDeviceSynchronize());
             endWallTime = omp_get_wtime();
             wallTime = endWallTime - startWallTime;
             maxWallTime = std::max(maxWallTime, wallTime);
@@ -356,15 +393,18 @@ int main(int argc, char * argv[])
         wallTime *= 1000;
         if (missingFuncFlag == 1)
         {
-            printf("\nThe functionality doesn't yet exist in RPP\n");
+            cout << "\nThe functionality doesn't yet exist in RPP\n";
             return -1;
         }
 
         // Copy output buffer to host
-        CHECK(hipMemcpy(outputF32, d_outputF32, oBufferSizeInBytes, hipMemcpyDeviceToHost));
+        CHECK_RETURN_STATUS(hipMemcpy(outputF32, d_outputF32, oBufferSizeInBytes, hipMemcpyDeviceToHost));
         if(testType == 0)
         {
-            cout << "\n\nGPU Backend Wall Time: " << wallTime <<" ms per batch"<< endl;
+            cout <<"\n\n";
+            if(noOfIterations > 1)
+                cout <<"Execution Timings for Iteration "<< iterCount+1 <<":"<<endl;
+            cout << "GPU Backend Wall Time: " << wallTime <<" ms per batch";
             if(DEBUG_MODE)
             {
                 std::ofstream refFile;
@@ -384,17 +424,50 @@ int main(int argc, char * argv[])
             if(inputBitDepth == 0)
             {
                 Rpp64u bufferLength = iBufferSize * sizeof(Rpp8u) + descriptorPtr3D->offsetInBytes;
-                CHECK(hipMemcpy(outputU8, d_outputU8, bufferLength, hipMemcpyDeviceToHost));
+                CHECK_RETURN_STATUS(hipMemcpy(outputU8, d_outputU8, bufferLength, hipMemcpyDeviceToHost));
 
                 // Copy U8 buffer to F32 buffer for display purposes
                 for(int i = 0; i < bufferLength; i++)
                     outputF32[i] = static_cast<float>(outputU8[i]);
             }
 
+            // if test case is slice and qaFlag is set, update the ROI with shapeTensor values
+            // for output display and comparison purposes
+            if(testCase == SLICE)
+            {
+                // update the roi for comparision with the shapeTensor values
+                if (descriptorPtr3D->layout == RpptLayout::NCDHW)
+                {
+                    for(int i = 0; i < batchSize; i++)
+                    {
+                        int idx1 = i * 4;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.x = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.y = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.z = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.roiDepth = shapeTensor[idx1 + 1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiHeight = shapeTensor[idx1 + 2];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiWidth = shapeTensor[idx1 + 3];
+                    }
+                }
+                else if(descriptorPtr3D->layout == RpptLayout::NDHWC)
+                {
+                    for(int i = 0; i < batchSize; i++)
+                    {
+                        int idx1 = i * 4;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.x = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.y = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.z = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.roiDepth = shapeTensor[idx1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiHeight = shapeTensor[idx1 + 1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiWidth = shapeTensor[idx1 + 2];
+                    }
+                }
+            }
+
             /*Compare the output of the function with golden outputs only if
             1.QA Flag is set
             2.input bit depth 2 (F32)*/
-            if(qaFlag && inputBitDepth == 2)
+            if(qaFlag && inputBitDepth == 2  && !(nonQACase))
                 compare_output(outputF32, oBufferSize, testCaseName, layoutType, descriptorPtr3D, (RpptRoiXyzwhd *)roiGenericSrcPtr, dstPath, scriptPath);
             else
             {
@@ -470,17 +543,22 @@ int main(int argc, char * argv[])
         avgWallTime /= (numRuns * noOfIterations);
         cout << fixed << "\nmax,min,avg wall times in ms/batch = " << maxWallTime << "," << minWallTime << "," << avgWallTime;
     }
-
-    rppDestroyHost(handle);
+    rppDestroyGPU(handle);
 
     // Free memory
     free(niftiDataArray);
     free(inputF32);
     free(outputF32);
-    CHECK(hipHostFree(pinnedMemROI));
-    CHECK(hipHostFree(pinnedMemArgs));
-    CHECK(hipFree(d_inputF32));
-    CHECK(hipFree(d_outputF32));
+    CHECK_RETURN_STATUS(hipHostFree(pinnedMemROI));
+    CHECK_RETURN_STATUS(hipHostFree(pinnedMemArgs));
+    CHECK_RETURN_STATUS(hipFree(d_inputF32));
+    CHECK_RETURN_STATUS(hipFree(d_outputF32));
+    if(anchorTensor != NULL)
+        CHECK_RETURN_STATUS(hipHostFree(anchorTensor));
+    if(shapeTensor != NULL)
+        CHECK_RETURN_STATUS(hipHostFree(shapeTensor));
+    if(roiTensor != NULL)
+        CHECK_RETURN_STATUS(hipHostFree(roiTensor));
     if(inputBitDepth == 0)
     {
         if(inputU8 != NULL)
@@ -488,9 +566,9 @@ int main(int argc, char * argv[])
         if(outputU8 != NULL)
             free(outputU8);
         if(d_inputU8 != NULL)
-            CHECK(hipFree(d_inputU8));
+            CHECK_RETURN_STATUS(hipFree(d_inputU8));
         if(d_outputU8 != NULL)
-            CHECK(hipFree(d_outputU8));
+            CHECK_RETURN_STATUS(hipFree(d_outputU8));
     }
 
     return(0);

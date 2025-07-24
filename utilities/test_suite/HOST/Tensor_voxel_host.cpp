@@ -34,7 +34,7 @@ int main(int argc, char * argv[])
 
     if (argc < MIN_ARG_COUNT)
     {
-        printf("\nImproper Usage! Needs all arguments!\n");
+        cout << "\nImproper Usage! Needs all arguments!\n";
         exit(1);
     }
 
@@ -50,6 +50,8 @@ int main(int argc, char * argv[])
     inputBitDepth = atoi(argv[10]);
     string scriptPath = argv[11];
 
+    bool nonQACase = (testCase == 6);
+
     if ((layoutType < 0) || (layoutType > 2))
     {
         fprintf(stdout, "\nUsage: %s <header file> <data file> <layoutType = 0 - PKD3/ 1 - PLN3/ 2 - PLN1>\n", argv[0]);
@@ -57,7 +59,7 @@ int main(int argc, char * argv[])
     }
     if(batchSize > MAX_BATCH_SIZE)
     {
-        std::cout << "\n Batchsize should be less than or equal to "<< MAX_BATCH_SIZE << " Aborting!";
+        cout << "\n Batchsize should be less than or equal to "<< MAX_BATCH_SIZE << " Aborting!";
         exit(0);
     }
 
@@ -65,7 +67,7 @@ int main(int argc, char * argv[])
     if (funcName.empty())
     {
         if (testType == 0)
-            printf("\ncase %d is not supported\n", testCase);
+            cout << "\ncase " << testCase << " is not supported\n";
 
         return -1;
     }
@@ -140,6 +142,10 @@ int main(int argc, char * argv[])
     void *pinnedMemArgs;
     pinnedMemArgs = calloc(2 * noOfFiles , sizeof(Rpp32f));
 
+    // arguments required for slice
+    Rpp32s *anchorTensor = NULL, *shapeTensor = NULL;
+    Rpp32u *roiTensor = NULL;
+
     // Set the number of threads to be used by OpenMP pragma for RPP batch processing on host.
     // If numThreads value passed is 0, number of OpenMP threads used by RPP will be set to batch size
     Rpp32u numThreads = 0;
@@ -161,7 +167,7 @@ int main(int argc, char * argv[])
         outputU8 = static_cast<Rpp8u *>(calloc(iBufferSizeU8, 1));
     }
 
-    printf("\nRunning %s %d times (each time with a batch size of %d images) and computing mean statistics...", funcName.c_str(), numRuns, batchSize);
+    cout << "\nRunning " << funcName << " " << numRuns << " times (each time with a batch size of " << batchSize << " images) and computing mean statistics...";
     for(int iterCount = 0; iterCount < noOfIterations; iterCount++)
     {
         vector<string>::const_iterator dataFilePathStart = dataFilePath.begin() + (iterCount * batchSize);
@@ -218,7 +224,7 @@ int main(int argc, char * argv[])
             double startWallTime, endWallTime;
             switch (testCase)
             {
-                case 0:
+                case FUSED_MULTIPLY_ADD_SCALAR:
                 {
                     testCaseName = "fused_multiply_add_scalar";
                     Rpp32f *mulTensor = reinterpret_cast<Rpp32f *>(pinnedMemArgs);
@@ -238,20 +244,30 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 1:
+                case SLICE:
                 {
                     testCaseName = "slice";
+                    if(anchorTensor == NULL)
+                        anchorTensor = static_cast<Rpp32s*>(calloc(batchSize * 4, sizeof(Rpp32s)));;
+                    if(shapeTensor == NULL)
+                       shapeTensor = static_cast<Rpp32s*>(calloc(batchSize * 4, sizeof(Rpp32s)));;
+                    if(roiTensor == NULL)
+                        roiTensor = static_cast<Rpp32u*>(calloc(batchSize * 8, sizeof(Rpp32u)));;
+                    bool enablePadding = false;
+                    auto fillValue = 0;
+                    init_slice_voxel(descriptorPtr3D, roiGenericSrcPtr, roiTensor, anchorTensor, shapeTensor);
+
                     startWallTime = omp_get_wtime();
                     if(inputBitDepth == 0)
-                        rppt_slice_host(inputU8, descriptorPtr3D, outputU8, descriptorPtr3D, roiGenericSrcPtr, roiTypeSrc, handle);
+                        rppt_slice_host(inputU8, descriptorPtr3D, outputU8, descriptorPtr3D, anchorTensor, shapeTensor, &fillValue, enablePadding, roiTensor, handle);
                     else if(inputBitDepth == 2)
-                        rppt_slice_host(inputF32, descriptorPtr3D, outputF32, descriptorPtr3D, roiGenericSrcPtr, roiTypeSrc, handle);
+                        rppt_slice_host(inputF32, descriptorPtr3D, outputF32, descriptorPtr3D, anchorTensor, shapeTensor, &fillValue, enablePadding, roiTensor, handle);
                     else
                         missingFuncFlag = 1;
 
                     break;
                 }
-                case 2:
+                case ADD_SCALAR:
                 {
                     testCaseName = "add_scalar";
                     Rpp32f addTensor[batchSize];
@@ -267,7 +283,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 3:
+                case SUBTRACT_SCALAR:
                 {
                     testCaseName = "subtract_scalar";
                     Rpp32f subtractTensor[batchSize];
@@ -283,7 +299,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 4:
+                case FLIP_VOXEL:
                 {
                     testCaseName = "flip_voxel";
                     Rpp32u horizontalTensor[batchSize];
@@ -307,7 +323,7 @@ int main(int argc, char * argv[])
 
                     break;
                 }
-                case 5:
+                case MULTIPLY_SCALAR:
                 {
                     testCaseName = "multiply_scalar";
                     Rpp32f mulTensor[batchSize];
@@ -318,6 +334,27 @@ int main(int argc, char * argv[])
                     startWallTime = omp_get_wtime();
                     if (inputBitDepth == 2)
                         rppt_multiply_scalar_host(inputF32, descriptorPtr3D, outputF32, descriptorPtr3D, mulTensor, roiGenericSrcPtr, roiTypeSrc, handle);
+                    else
+                        missingFuncFlag = 1;
+
+                    break;
+                }
+                case GAUSSIAN_NOISE_VOXEL:
+                {
+                    testCaseName = "gaussian_noise_voxel";
+                    Rpp32f meanTensor[batchSize];
+                    Rpp32f stdDevTensor[batchSize];
+
+                    Rpp32u seed = 1255459;
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        meanTensor[i] = 1.4;
+                        stdDevTensor[i] = 0.6;
+                    }
+
+                    startWallTime = omp_get_wtime();
+                    if (inputBitDepth == 2)
+                        rppt_gaussian_noise_voxel_host(inputF32, descriptorPtr3D, outputF32, descriptorPtr3D, meanTensor, stdDevTensor, seed, roiGenericSrcPtr, roiTypeSrc, handle);
                     else
                         missingFuncFlag = 1;
 
@@ -338,7 +375,7 @@ int main(int argc, char * argv[])
 
             if (missingFuncFlag == 1)
             {
-                printf("\nThe functionality doesn't yet exist in RPP\n");
+                cout << "\nThe functionality doesn't yet exist in RPP\n";
                 return -1;
             }
         }
@@ -346,7 +383,10 @@ int main(int argc, char * argv[])
         wallTime *= 1000;
         if(testType == 0)
         {
-            cout << "\n\nCPU Backend Wall Time: " << wallTime <<" ms per batch"<< endl;
+            cout <<"\n\n";
+            if(noOfIterations > 1)
+                cout <<"Execution Timings for Iteration "<< iterCount+1 <<":"<<endl;
+            cout << "CPU Backend Wall Time: " << wallTime <<" ms per batch";
             if(DEBUG_MODE)
             {
                 std::ofstream refFile;
@@ -372,10 +412,43 @@ int main(int argc, char * argv[])
                     outputF32[i] = static_cast<float>(outputU8[i]);
             }
 
+            // if test case is slice and qaFlag is set, update the ROI with shapeTensor values
+            // for output display and comparison purposes
+            if(testCase == SLICE)
+            {
+                // update the roi for comparision with the shapeTensor values
+                if (descriptorPtr3D->layout == RpptLayout::NCDHW)
+                {
+                    for(int i = 0; i < batchSize; i++)
+                    {
+                        int idx1 = i * 4;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.x = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.y = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.z = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.roiDepth = shapeTensor[idx1 + 1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiHeight = shapeTensor[idx1 + 2];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiWidth = shapeTensor[idx1 + 3];
+                    }
+                }
+                else if(descriptorPtr3D->layout == RpptLayout::NDHWC)
+                {
+                    for(int i = 0; i < batchSize; i++)
+                    {
+                        int idx1 = i * 4;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.x = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.y = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.xyz.z = 0;
+                        roiGenericSrcPtr[i].xyzwhdROI.roiDepth = shapeTensor[idx1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiHeight = shapeTensor[idx1 + 1];
+                        roiGenericSrcPtr[i].xyzwhdROI.roiWidth = shapeTensor[idx1 + 2];
+                    }
+                }
+            }
+
             /*Compare the output of the function with golden outputs only if
             1.QA Flag is set
             2.input bit depth 2 (F32)*/
-            if(qaFlag && inputBitDepth == 2)
+            if(qaFlag && inputBitDepth == 2  && !(nonQACase))
                 compare_output(outputF32, oBufferSize, testCaseName, layoutType, descriptorPtr3D, (RpptRoiXyzwhd *)roiGenericSrcPtr, dstPath, scriptPath);
             else
             {
@@ -460,6 +533,12 @@ int main(int argc, char * argv[])
     free(outputF32);
     free(roiGenericSrcPtr);
     free(pinnedMemArgs);
+    if(anchorTensor != NULL)
+        free(anchorTensor);
+    if(shapeTensor != NULL)
+        free(shapeTensor);
+    if(roiTensor != NULL)
+        free(roiTensor);
     if(inputBitDepth == 0)
     {
         if(inputU8 != NULL)

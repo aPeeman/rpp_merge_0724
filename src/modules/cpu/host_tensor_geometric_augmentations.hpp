@@ -35,7 +35,10 @@ SOFTWARE.
 #include "kernel/warp_affine.hpp"
 #include "kernel/phase.hpp"
 #include "kernel/slice.hpp"
+#include "kernel/lens_correction.hpp"
+#include "kernel/transpose.hpp"
 #include "kernel/crop_and_patch.hpp"
 #include "kernel/flip_voxel.hpp"
+#include "kernel/warp_perspective.hpp"
 
 #endif // HOST_TENSOR_GEOMETRIC_AUGMENTATIONS_HPP

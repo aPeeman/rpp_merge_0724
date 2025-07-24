@@ -55,7 +55,6 @@ __global__ void remap_nearest_neighbor_pkd_hip_tensor(T *srcPtr,
     d_float24 dst_f24;
     rpp_hip_interpolate24_nearest_neighbor_pkd3(srcPtr + srcIdx, srcStridesNH.y, &locSrc_f16, &srcRoi_i4, &dst_f24);
     rpp_hip_pack_float24_pkd3_and_store24_pkd3(dstPtr + dstIdx, &dst_f24);
-
 }
 
 template <typename T>
@@ -207,7 +206,6 @@ __global__ void remap_bilinear_pkd_hip_tensor(T *srcPtr,
     d_float24 dst_f24;
     rpp_hip_interpolate24_bilinear_pkd3(srcPtr + srcIdx, srcStridesNH.y, &locSrc_f16, &srcRoi_i4, &dst_f24);
     rpp_hip_pack_float24_pkd3_and_store24_pkd3(dstPtr + dstIdx, &dst_f24);
-
 }
 
 template <typename T>

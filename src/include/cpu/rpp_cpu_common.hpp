@@ -31,9 +31,6 @@ SOFTWARE.
 #include <cstring>
 #include <rppdefs.h>
 #include <omp.h>
-#include <half/half.hpp>
-using halfhpp = half_float::half;
-typedef halfhpp Rpp16f;
 #include "rpp_cpu_simd.hpp"
 
 #define PI                              3.14159265
@@ -176,6 +173,21 @@ struct RPPTensorFunctionMetaData
     }
 };
 #endif // GPU_SUPPORT
+
+// Computes strides for ND Tensor
+inline void compute_strides(Rpp32u *strides, Rpp32u *shape, Rpp32u tensorDim)
+{
+    if (tensorDim > 0)
+    {
+        Rpp32u v = 1;
+        for (Rpp32u i = tensorDim - 1; i > 0; i--)
+        {
+            strides[i] = v;
+            v *= shape[i];
+        }
+        strides[0] = v;
+    }
+}
 
 // Uses fast inverse square root algorithm from Lomont, C., 2003. FAST INVERSE SQUARE ROOT. [online] lomont.org. Available at: <http://www.lomont.org/papers/2003/InvSqrt.pdf>
 inline float rpp_host_math_inverse_sqrt_1(float x)
@@ -495,24 +507,24 @@ inline int power_function(int a, int b)
     return product;
 }
 
-inline void saturate_pixel(Rpp32f pixel, Rpp8u* dst)
+inline void saturate_pixel(Rpp32f &pixel, Rpp8u* dst)
 {
-    *dst = RPPPIXELCHECK(pixel);
+    *dst = static_cast<Rpp8u>(RPPPIXELCHECK(std::nearbyintf(pixel)));
 }
 
-inline void saturate_pixel(Rpp32f pixel, Rpp8s* dst)
+inline void saturate_pixel(Rpp32f &pixel, Rpp8s* dst)
 {
-    *dst = (Rpp8s)RPPPIXELCHECKI8(pixel - 128);
+    *dst = static_cast<Rpp8s>(RPPPIXELCHECKI8(std::nearbyintf(pixel) - 128));
 }
 
-inline void saturate_pixel(Rpp32f pixel, Rpp32f* dst)
+inline void saturate_pixel(Rpp32f &pixel, Rpp32f* dst)
 {
-    *dst = (Rpp32f)pixel;
+    *dst = RPPPIXELCHECKF32(pixel);
 }
 
-inline void saturate_pixel(Rpp32f pixel, Rpp16f* dst)
+inline void saturate_pixel(Rpp32f &pixel, Rpp16f* dst)
 {
-    *dst = (Rpp16f)pixel;
+    *dst = static_cast<Rpp16f>(RPPPIXELCHECKF32(pixel));
 }
 
 template <typename T>
@@ -1050,7 +1062,61 @@ inline void generate_bressenham_line_host(T *dstPtr, RppiSize dstSize, Rpp32u *e
     }
 }
 
-
+// copy ROI of voxel data from input to output
+template<typename T>
+void copy_3d_host_tensor(T *srcPtr,
+                         RpptGenericDescPtr srcGenericDescPtr,
+                         T *dstPtr,
+                         RpptGenericDescPtr dstGenericDescPtr,
+                         RpptROI3D *roi,
+                         RppLayoutParams layoutParams)
+{
+    if((srcGenericDescPtr->layout == RpptLayout::NDHWC) && (dstGenericDescPtr->layout == RpptLayout::NDHWC))
+    {
+        T *srcPtrDepth = srcPtr + (roi->xyzwhdROI.xyz.z * srcGenericDescPtr->strides[1]) + (roi->xyzwhdROI.xyz.y * srcGenericDescPtr->strides[2]) + (roi->xyzwhdROI.xyz.x * layoutParams.bufferMultiplier);
+        T *dstPtrDepth = dstPtr;
+        Rpp32u width = roi->xyzwhdROI.roiWidth * srcGenericDescPtr->dims[4];
+        for(int i = 0; i < roi->xyzwhdROI.roiDepth; i++)
+        {
+            T *srcPtrRow = srcPtrDepth;
+            T *dstPtrRow = dstPtrDepth;
+            for(int j = 0; j < roi->xyzwhdROI.roiHeight; j++)
+            {
+                memcpy(dstPtrRow, srcPtrRow, width * sizeof(T));
+                srcPtrRow += srcGenericDescPtr->strides[2];
+                dstPtrRow += dstGenericDescPtr->strides[2];
+            }
+            srcPtrDepth += srcGenericDescPtr->strides[1];
+            dstPtrDepth += dstGenericDescPtr->strides[1];
+        }
+    }
+    else if ((srcGenericDescPtr->layout == RpptLayout::NCDHW) && (dstGenericDescPtr->layout == RpptLayout::NCDHW))
+    {
+        T *srcPtrChannel = srcPtr + (roi->xyzwhdROI.xyz.z * srcGenericDescPtr->strides[2]) + (roi->xyzwhdROI.xyz.y * srcGenericDescPtr->strides[3]) + (roi->xyzwhdROI.xyz.x * layoutParams.bufferMultiplier);
+        T *dstPtrChannel = dstPtr;
+        int channels = srcGenericDescPtr->dims[1];
+        for(int c = 0; c < channels; c++)
+        {
+            T *srcPtrDepth = srcPtrChannel;
+            T *dstPtrDepth = dstPtrChannel;
+            for(int i = 0; i < roi->xyzwhdROI.roiDepth; i++)
+            {
+                T *srcPtrRow = srcPtrDepth;
+                T *dstPtrRow = dstPtrDepth;
+                for(int j = 0; j < roi->xyzwhdROI.roiHeight; j++)
+                {
+                    memcpy(dstPtrRow, srcPtrRow, roi->xyzwhdROI.roiWidth * sizeof(T));
+                    srcPtrRow += srcGenericDescPtr->strides[3];
+                    dstPtrRow += dstGenericDescPtr->strides[3];
+                }
+                srcPtrDepth += srcGenericDescPtr->strides[2];
+                dstPtrDepth += dstGenericDescPtr->strides[2];
+            }
+            srcPtrChannel += srcGenericDescPtr->strides[1];
+            dstPtrChannel += dstGenericDescPtr->strides[1];
+        }
+    }
+}
 
 
 
@@ -3066,6 +3132,67 @@ inline void compute_color_temperature_24_host(__m256 *p, __m256 pAdj)
     p[2] = _mm256_sub_ps(p[2], pAdj);    // color_temperature adjustment Bs
 }
 
+inline void compute_fog_48_host(__m256 *p, __m256 *pFogAlphaMask, __m256 *pFogIntensityMask, __m256 pIntensityFactor, __m256 pGrayFactor, __m256 *pConversionFactor)
+{
+    __m256 pAlphaMaskFactor[2], pIntensityMaskFactor[2], pGray[2], pOneMinusGrayFactor;
+    pGray[0] = _mm256_fmadd_ps(pConversionFactor[0], p[0], _mm256_fmadd_ps(pConversionFactor[1], p[2], _mm256_mul_ps(pConversionFactor[2], p[4]))); 
+    pGray[1] = _mm256_fmadd_ps(pConversionFactor[0], p[1], _mm256_fmadd_ps(pConversionFactor[1], p[3], _mm256_mul_ps(pConversionFactor[2], p[5]))); 
+    pOneMinusGrayFactor = _mm256_sub_ps(avx_p1 , pGrayFactor);
+    pGray[0] = _mm256_mul_ps(pGray[0], pGrayFactor);
+    pGray[1] = _mm256_mul_ps(pGray[1], pGrayFactor);
+    p[0] = _mm256_fmadd_ps(p[0], pOneMinusGrayFactor, pGray[0]);  
+    p[1] = _mm256_fmadd_ps(p[1], pOneMinusGrayFactor, pGray[0]);  
+    p[2] = _mm256_fmadd_ps(p[2], pOneMinusGrayFactor, pGray[0]);  
+    p[3] = _mm256_fmadd_ps(p[3], pOneMinusGrayFactor, pGray[1]);  
+    p[4] = _mm256_fmadd_ps(p[4], pOneMinusGrayFactor, pGray[1]);  
+    p[5] = _mm256_fmadd_ps(p[5], pOneMinusGrayFactor, pGray[1]);  
+    pAlphaMaskFactor[0] = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pAlphaMaskFactor[1] = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[1], pIntensityFactor));
+    pIntensityMaskFactor[0] = _mm256_mul_ps(pFogIntensityMask[0], _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pIntensityMaskFactor[1] = _mm256_mul_ps(pFogIntensityMask[1], _mm256_add_ps(pFogAlphaMask[1], pIntensityFactor));
+    p[0] = _mm256_fmadd_ps(p[0],  pAlphaMaskFactor[0], pIntensityMaskFactor[0]);    // fog adjustment
+    p[1] = _mm256_fmadd_ps(p[1],  pAlphaMaskFactor[1], pIntensityMaskFactor[1]);    // fog adjustment
+    p[2] = _mm256_fmadd_ps(p[2],  pAlphaMaskFactor[0], pIntensityMaskFactor[0]);    // fog adjustment
+    p[3] = _mm256_fmadd_ps(p[3],  pAlphaMaskFactor[1], pIntensityMaskFactor[1]);    // fog adjustment
+    p[4] = _mm256_fmadd_ps(p[4],  pAlphaMaskFactor[0], pIntensityMaskFactor[0]);    // fog adjustment
+    p[5] = _mm256_fmadd_ps(p[5],  pAlphaMaskFactor[1], pIntensityMaskFactor[1]);    // fog adjustment
+}
+
+inline void compute_fog_24_host(__m256 *p, __m256 *pFogAlphaMask, __m256 *pFogIntensityMask, __m256 pIntensityFactor, __m256 pGrayFactor, __m256 *pConversionFactor)
+{
+    __m256 pAlphaMaskFactor, pIntensityMaskFactor, pGray, pOneMinusGrayFactor;
+    pGray = _mm256_fmadd_ps(pConversionFactor[0], p[0], _mm256_fmadd_ps(pConversionFactor[1], p[1], _mm256_mul_ps(pConversionFactor[2], p[2]))); 
+    pOneMinusGrayFactor = _mm256_sub_ps(avx_p1 , pGrayFactor);
+    pGray = _mm256_mul_ps(pGray, pGrayFactor);
+    p[0] = _mm256_fmadd_ps(p[0], pOneMinusGrayFactor, pGray);  
+    p[1] = _mm256_fmadd_ps(p[1], pOneMinusGrayFactor, pGray);  
+    p[2] = _mm256_fmadd_ps(p[2], pOneMinusGrayFactor, pGray);  
+    pAlphaMaskFactor = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pIntensityMaskFactor = _mm256_mul_ps(pFogIntensityMask[0], _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    p[0] = _mm256_fmadd_ps(p[0],  pAlphaMaskFactor, pIntensityMaskFactor);    // fog adjustment
+    p[1] = _mm256_fmadd_ps(p[1],  pAlphaMaskFactor, pIntensityMaskFactor);    // fog adjustment
+    p[2] = _mm256_fmadd_ps(p[2],  pAlphaMaskFactor, pIntensityMaskFactor);    // fog adjustment
+}
+
+inline void compute_fog_16_host(__m256 *p, __m256 *pFogAlphaMask, __m256 *pFogIntensityMask, __m256 pIntensityFactor)
+{
+    __m256 pAlphaMaskFactor[2], pIntensityMaskFactor[2];
+    pAlphaMaskFactor[0] = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pAlphaMaskFactor[1] = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[1], pIntensityFactor));
+    pIntensityMaskFactor[0] = _mm256_mul_ps(pFogIntensityMask[0], _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pIntensityMaskFactor[1] = _mm256_mul_ps(pFogIntensityMask[1], _mm256_add_ps(pFogAlphaMask[1], pIntensityFactor));
+    p[0] = _mm256_fmadd_ps(p[0],  pAlphaMaskFactor[0], pIntensityMaskFactor[0]);    // fog adjustment
+    p[1] = _mm256_fmadd_ps(p[1],  pAlphaMaskFactor[1], pIntensityMaskFactor[1]);    // fog adjustment
+}
+
+inline void compute_fog_8_host(__m256 *p, __m256 *pFogAlphaMask, __m256 *pFogIntensityMask, __m256 pIntensityFactor)
+{
+    __m256 pAlphaMaskFactor, pIntensityMaskFactor;
+    pAlphaMaskFactor = _mm256_sub_ps(avx_p1, _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    pIntensityMaskFactor = _mm256_mul_ps(pFogIntensityMask[0], _mm256_add_ps(pFogAlphaMask[0], pIntensityFactor));
+    p[0] = _mm256_fmadd_ps(p[0],  pAlphaMaskFactor, pIntensityMaskFactor);    // fog adjustment
+}
+
 inline void compute_xywh_from_ltrb_host(RpptROIPtr roiPtrInput, RpptROIPtr roiPtrImage)
 {
     roiPtrImage->xywhROI.xy.x = roiPtrInput->ltrbROI.lt.x;
@@ -3150,7 +3277,7 @@ inline void compute_color_jitter_ctm_host(Rpp32f brightnessParam, Rpp32f contras
 {
     contrastParam += 1.0f;
 
-    alignas(64) Rpp32f hue_saturation_matrix[16] = {0.299f, 0.299f, 0.299f, 0.0f, 0.587f, 0.587f, 0.587f, 0.0f, 0.114f, 0.114f, 0.114f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+    alignas(64) Rpp32f hue_saturation_matrix[16] = {RGB_TO_GREY_WEIGHT_RED, RGB_TO_GREY_WEIGHT_RED, RGB_TO_GREY_WEIGHT_RED, 0.0f, RGB_TO_GREY_WEIGHT_GREEN, RGB_TO_GREY_WEIGHT_GREEN, RGB_TO_GREY_WEIGHT_GREEN, 0.0f, RGB_TO_GREY_WEIGHT_BLUE, RGB_TO_GREY_WEIGHT_BLUE, RGB_TO_GREY_WEIGHT_BLUE, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
     alignas(64) Rpp32f brightness_contrast_matrix[16] = {contrastParam, 0.0f, 0.0f, 0.0f, 0.0f, contrastParam, 0.0f, 0.0f, 0.0f, 0.0f, contrastParam, 0.0f, brightnessParam, brightnessParam, brightnessParam, 1.0f};
 
     Rpp32f sch = saturationParam * cos(hueParam * PI_OVER_180);
@@ -3414,6 +3541,17 @@ inline void compute_gaussian_noise_16_host(__m256 *p, __m256i *pxXorwowStateX, _
     p[1] = _mm256_fmadd_ps(pSqrt[1], pRngVals[1], p[1]);                                            // return RPPPIXELCHECKF32(pixSqrt * rngVal + pixVal);
 }
 
+inline void compute_gaussian_noise_voxel_16_host(__m256 *p, __m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 *pGaussianNoiseParams)
+{
+    __m256 pRngVals[2], pSqrt[2];
+
+    rpp_host_rng_16_gaussian_f32_avx(pRngVals, pxXorwowStateX, pxXorwowStateCounter);               // rngVal = rpp_host_rng_1_gaussian_f32(xorwowStatePtr);
+    pRngVals[0] = _mm256_fmadd_ps(pRngVals[0], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);   // rngVal = rngVal * stdDev + mean;
+    pRngVals[1] = _mm256_fmadd_ps(pRngVals[1], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);   // rngVal = rngVal * stdDev + mean;
+    p[0] = _mm256_add_ps(p[0], pRngVals[0]);                                                        // return pixVal + rngVal;
+    p[1] = _mm256_add_ps(p[1], pRngVals[1]);                                                        // return pixVal + rngVal;
+}
+
 inline void compute_gaussian_noise_8_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
 {
     __m128 pRngVals[2], pSqrt[2];
@@ -3427,10 +3565,27 @@ inline void compute_gaussian_noise_8_host(__m128 *p, __m128i *pxXorwowStateX, __
     p[1] = _mm_fmadd_ps(pSqrt[1], pRngVals[1], p[1]);                                           // return RPPPIXELCHECKF32(pixSqrt * rngVal + pixVal);
 }
 
+inline void compute_gaussian_noise_voxel_8_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
+{
+    __m128 pRngVals[2], pSqrt[2];
+
+    rpp_host_rng_8_gaussian_f32_sse(pRngVals, pxXorwowStateX, pxXorwowStateCounter);            // rngVal = rpp_host_rng_1_gaussian_f32(xorwowStatePtr);
+    pRngVals[0] = _mm_fmadd_ps(pRngVals[0], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);  // rngVal = rngVal * stdDev + mean;
+    pRngVals[1] = _mm_fmadd_ps(pRngVals[1], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);  // rngVal = rngVal * stdDev + mean;
+    p[0] = _mm_add_ps(p[0], pRngVals[0]);                                                       // return (pixVal + rngVal);
+    p[1] = _mm_add_ps(p[1], pRngVals[1]);                                                       // return (pixVal + rngVal);
+}
+
 inline void compute_gaussian_noise_16_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
 {
     compute_gaussian_noise_8_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
     compute_gaussian_noise_8_host(&p[2], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+}
+
+inline void compute_gaussian_noise_voxel_16_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
+{
+    compute_gaussian_noise_voxel_8_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+    compute_gaussian_noise_voxel_8_host(&p[2], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
 }
 
 inline void compute_gaussian_noise_48_host(__m256 *p, __m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 *pGaussianNoiseParams)
@@ -3440,11 +3595,25 @@ inline void compute_gaussian_noise_48_host(__m256 *p, __m256i *pxXorwowStateX, _
     compute_gaussian_noise_16_host(&p[4], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
 }
 
+inline void compute_gaussian_noise_voxel_48_host(__m256 *p, __m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 *pGaussianNoiseParams)
+{
+    compute_gaussian_noise_voxel_16_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+    compute_gaussian_noise_voxel_16_host(&p[2], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+    compute_gaussian_noise_voxel_16_host(&p[4], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+}
+
 inline void compute_gaussian_noise_48_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
 {
     compute_gaussian_noise_16_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
     compute_gaussian_noise_16_host(&p[4], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
     compute_gaussian_noise_16_host(&p[8], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+}
+
+inline void compute_gaussian_noise_voxel_48_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
+{
+    compute_gaussian_noise_voxel_16_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+    compute_gaussian_noise_voxel_16_host(&p[4], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+    compute_gaussian_noise_voxel_16_host(&p[8], pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
 }
 
 inline void compute_gaussian_noise_24_host(__m256 *p, __m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 *pGaussianNoiseParams)
@@ -3458,6 +3627,16 @@ inline void compute_gaussian_noise_24_host(__m256 *p, __m256i *pxXorwowStateX, _
     p[2] = _mm256_fmadd_ps(pSqrt, pRngVals[0], p[2]);                                               // return RPPPIXELCHECKF32(pixSqrt * rngVal + pixVal);
 }
 
+inline void compute_gaussian_noise_voxel_24_host(__m256 *p, __m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 *pGaussianNoiseParams)
+{
+    compute_gaussian_noise_16_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+
+    __m256 pRngVals[2];
+    rpp_host_rng_16_gaussian_f32_avx(pRngVals, pxXorwowStateX, pxXorwowStateCounter);               // rngVal = rpp_host_rng_1_gaussian_f32(xorwowStatePtr);
+    pRngVals[0] = _mm256_fmadd_ps(pRngVals[0], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);   // rngVal = rngVal * stdDev + mean;
+    p[2] = _mm256_add_ps(p[2], pRngVals[0]);                                                        // return pixVal + rngVal;
+}
+
 inline void compute_gaussian_noise_12_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
 {
     compute_gaussian_noise_8_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
@@ -3469,6 +3648,16 @@ inline void compute_gaussian_noise_12_host(__m128 *p, __m128i *pxXorwowStateX, _
     p[2] = _mm_fmadd_ps(pSqrt, pRngVals[0], p[2]);                                              // return RPPPIXELCHECKF32(pixSqrt * rngVal + pixVal);
 }
 
+inline void compute_gaussian_noise_voxel_12_host(__m128 *p, __m128i *pxXorwowStateX, __m128i *pxXorwowStateCounter, __m128 *pGaussianNoiseParams)
+{
+    compute_gaussian_noise_8_host(p, pxXorwowStateX, pxXorwowStateCounter, pGaussianNoiseParams);
+
+    __m128 pRngVals[2], pSqrt;
+    rpp_host_rng_8_gaussian_f32_sse(pRngVals, pxXorwowStateX, pxXorwowStateCounter);            // rngVal = rpp_host_rng_1_gaussian_f32(xorwowStatePtr);
+    pRngVals[0] = _mm_fmadd_ps(pRngVals[0], pGaussianNoiseParams[1], pGaussianNoiseParams[0]);  // rngVal = rngVal * stdDev + mean;
+    p[2] = _mm_add_ps(p[2], pRngVals[0]);                                                       // return pixVal + rngVal;
+}
+
 inline Rpp32f compute_gaussian_noise_1_host(Rpp32f pixVal, RpptXorwowStateBoxMuller *xorwowStatePtr, Rpp32f mean, Rpp32f stdDev)
 {
     Rpp32f rngVal, pixSqrt;
@@ -3477,6 +3666,14 @@ inline Rpp32f compute_gaussian_noise_1_host(Rpp32f pixVal, RpptXorwowStateBoxMul
     pixSqrt = sqrt(pixVal);
 
     return RPPPIXELCHECKF32(pixSqrt * rngVal + pixVal);
+}
+
+inline Rpp32f compute_gaussian_noise_voxel_1_host(Rpp32f pixVal, RpptXorwowStateBoxMuller *xorwowStatePtr, Rpp32f mean, Rpp32f stdDev)
+{
+    Rpp32f rngVal, pixSqrt;
+    rngVal = rpp_host_rng_1_gaussian_f32(xorwowStatePtr);
+    rngVal = rngVal * stdDev + mean;
+    return pixVal + rngVal;
 }
 
 inline void compute_offset_i8_1c_avx(__m256 &p)
@@ -4017,9 +4214,9 @@ inline void compute_hsv_to_rgb_host(T* srcPtr, RppiSize srcSize, U* dstPtr,
         for (; vectorLoopCount < alignedLength; vectorLoopCount+=4)
         {
             // Load
-            h1 =  _mm_loadu_si128((__m128i *)srcPtrTempH);
-            h2 =  _mm_loadu_si128((__m128i *)srcPtrTempS);
-            h3 =  _mm_loadu_si128((__m128i *)srcPtrTempV);
+            h1 =  _mm_loadu_ps((float*)srcPtrTempH);
+            h2 =  _mm_loadu_ps((float*)srcPtrTempS);
+            h3 =  _mm_loadu_ps((float*)srcPtrTempV);
 
             h1 = _mm_div_ps(h1, pDiv);
 
@@ -4995,10 +5192,17 @@ inline void compute_generic_bilinear_srclocs_and_interpolate(T *srcPtrChannel, R
 
     for (int c = 0; c < srcDescPtr->c; c++)
     {
-        dst[c] = (T)std::nearbyintf(((*(srcPtrChannel + srcLoc[0]) * bilinearCoeffs[0]) +        // TopRow R01 Pixel * coeff0
-                    (*(srcPtrChannel + srcLoc[1]) * bilinearCoeffs[1]) +        // TopRow R02 Pixel * coeff1
-                    (*(srcPtrChannel + srcLoc[2]) * bilinearCoeffs[2]) +        // BottomRow R01 Pixel * coeff2
-                    (*(srcPtrChannel + srcLoc[3]) * bilinearCoeffs[3])));        // BottomRow R02 Pixel * coeff3
+        if constexpr (std::is_same<T, Rpp8s>::value || std::is_same<T, Rpp8u>::value)
+          dst[c] = (T)std::nearbyintf(((*(srcPtrChannel + srcLoc[0]) * bilinearCoeffs[0]) +        // TopRow R01 Pixel * coeff0
+                    (*(srcPtrChannel + srcLoc[1]) * bilinearCoeffs[1]) +                           // TopRow R02 Pixel * coeff1
+                    (*(srcPtrChannel + srcLoc[2]) * bilinearCoeffs[2]) +                           // BottomRow R01 Pixel * coeff2
+                    (*(srcPtrChannel + srcLoc[3]) * bilinearCoeffs[3])));                          // BottomRow R02 Pixel * coeff3
+        else if constexpr (std::is_same<T, Rpp32f>::value || std::is_same<T, Rpp16f>::value)
+          dst[c] = (T)(((*(srcPtrChannel + srcLoc[0]) * bilinearCoeffs[0]) +                       // TopRow R01 Pixel * coeff0
+                    (*(srcPtrChannel + srcLoc[1]) * bilinearCoeffs[1]) +                           // TopRow R02 Pixel * coeff1
+                    (*(srcPtrChannel + srcLoc[2]) * bilinearCoeffs[2]) +                           // BottomRow R01 Pixel * coeff2
+                    (*(srcPtrChannel + srcLoc[3]) * bilinearCoeffs[3])));                          // BottomRow R02 Pixel * coeff3
+
         srcPtrChannel += srcDescPtr->strides.cStride;
     }
 }
@@ -5072,7 +5276,9 @@ inline void compute_generic_bilinear_srclocs_3c_avx(__m256 &pSrcY, __m256 &pSrcX
 template <typename T>
 inline void compute_generic_bilinear_interpolation_pkd3_to_pln3(Rpp32f srcY, Rpp32f srcX, RpptROI *roiLTRB, T *dstPtrTempR, T *dstPtrTempG, T *dstPtrTempB, T *srcPtrChannel, RpptDescPtr srcDescPtr)
 {
-    if ((srcX < roiLTRB->ltrbROI.lt.x) || (srcY < roiLTRB->ltrbROI.lt.y) || (srcX > roiLTRB->ltrbROI.rb.x) || (srcY > roiLTRB->ltrbROI.rb.y))
+    Rpp32s srcXFloor = std::floor(srcX);
+    Rpp32s srcYFloor = std::floor(srcY);
+    if ((srcXFloor < roiLTRB->ltrbROI.lt.x) || (srcYFloor < roiLTRB->ltrbROI.lt.y) || (srcXFloor > roiLTRB->ltrbROI.rb.x) || (srcYFloor > roiLTRB->ltrbROI.rb.y))
     {
         *dstPtrTempR = 0;
         *dstPtrTempG = 0;
@@ -5435,10 +5641,10 @@ inline void compute_bilinear_interpolation_1c(T **srcRowPtrsForInterp, Rpp32s lo
 {
     Rpp32s loc1 = std::min(std::max(loc, 0), limit);
     Rpp32s loc2 = std::min(std::max(loc + 1, 0), limit);
-    *dstPtr = (U)std::nearbyintf((((*(srcRowPtrsForInterp[0] + loc1)) * bilinearCoeffs[0]) +     // TopRow 1st Pixel * coeff0
-                                  ((*(srcRowPtrsForInterp[0] + loc2)) * bilinearCoeffs[1]) +     // TopRow 2nd Pixel * coeff1
-                                  ((*(srcRowPtrsForInterp[1] + loc1)) * bilinearCoeffs[2]) +     // BottomRow 1st Pixel * coeff2
-                                  ((*(srcRowPtrsForInterp[1] + loc2)) * bilinearCoeffs[3])));    // BottomRow 2nd Pixel * coeff3
+    *dstPtr = (U)(((*(srcRowPtrsForInterp[0] + loc1)) * bilinearCoeffs[0]) +     // TopRow 1st Pixel * coeff0
+                  ((*(srcRowPtrsForInterp[0] + loc2)) * bilinearCoeffs[1]) +     // TopRow 2nd Pixel * coeff1
+                  ((*(srcRowPtrsForInterp[1] + loc1)) * bilinearCoeffs[2]) +     // BottomRow 1st Pixel * coeff2
+                  ((*(srcRowPtrsForInterp[1] + loc2)) * bilinearCoeffs[3]));    // BottomRow 2nd Pixel * coeff3
 }
 
 template <typename T, typename U>
@@ -5446,18 +5652,18 @@ inline void compute_bilinear_interpolation_3c_pkd(T **srcRowPtrsForInterp, Rpp32
 {
     Rpp32s loc1 = std::min(std::max(loc, 0), limit);
     Rpp32s loc2 = std::min(std::max(loc + 3, 0), limit);
-    *dstPtrR = (U)std::nearbyintf((((*(srcRowPtrsForInterp[0] + loc1)) * bilinearCoeffs[0]) +        // TopRow R01 Pixel * coeff0
-                                   ((*(srcRowPtrsForInterp[0] + loc2)) * bilinearCoeffs[1]) +        // TopRow R02 Pixel * coeff1
-                                   ((*(srcRowPtrsForInterp[1] + loc1)) * bilinearCoeffs[2]) +        // BottomRow R01 Pixel * coeff2
-                                   ((*(srcRowPtrsForInterp[1] + loc2)) * bilinearCoeffs[3])));       // BottomRow R02 Pixel * coeff3
-    *dstPtrG = (U)std::nearbyintf((((*(srcRowPtrsForInterp[0] + loc1 + 1)) * bilinearCoeffs[0]) +    // TopRow G01 Pixel * coeff0
-                                   ((*(srcRowPtrsForInterp[0] + loc2 + 1)) * bilinearCoeffs[1]) +    // TopRow G02 Pixel * coeff1
-                                   ((*(srcRowPtrsForInterp[1] + loc1 + 1)) * bilinearCoeffs[2]) +    // BottomRow G01 Pixel * coeff2
-                                   ((*(srcRowPtrsForInterp[1] + loc2 + 1)) * bilinearCoeffs[3])));   // BottomRow G02 Pixel * coeff3
-    *dstPtrB = (U)std::nearbyintf((((*(srcRowPtrsForInterp[0] + loc1 + 2)) * bilinearCoeffs[0]) +    // TopRow B01 Pixel * coeff0
-                                   ((*(srcRowPtrsForInterp[0] + loc2 + 2)) * bilinearCoeffs[1]) +    // TopRow B02 Pixel * coeff1
-                                   ((*(srcRowPtrsForInterp[1] + loc1 + 2)) * bilinearCoeffs[2]) +    // BottomRow B01 Pixel * coeff2
-                                   ((*(srcRowPtrsForInterp[1] + loc2 + 2)) * bilinearCoeffs[3])));   // BottomRow B02 Pixel * coeff3
+    *dstPtrR = (U)(((*(srcRowPtrsForInterp[0] + loc1)) * bilinearCoeffs[0]) +        // TopRow R01 Pixel * coeff0
+                   ((*(srcRowPtrsForInterp[0] + loc2)) * bilinearCoeffs[1]) +        // TopRow R02 Pixel * coeff1
+                   ((*(srcRowPtrsForInterp[1] + loc1)) * bilinearCoeffs[2]) +        // BottomRow R01 Pixel * coeff2
+                   ((*(srcRowPtrsForInterp[1] + loc2)) * bilinearCoeffs[3]));       // BottomRow R02 Pixel * coeff3
+    *dstPtrG = (U)(((*(srcRowPtrsForInterp[0] + loc1 + 1)) * bilinearCoeffs[0]) +    // TopRow G01 Pixel * coeff0
+                   ((*(srcRowPtrsForInterp[0] + loc2 + 1)) * bilinearCoeffs[1]) +    // TopRow G02 Pixel * coeff1
+                   ((*(srcRowPtrsForInterp[1] + loc1 + 1)) * bilinearCoeffs[2]) +    // BottomRow G01 Pixel * coeff2
+                   ((*(srcRowPtrsForInterp[1] + loc2 + 1)) * bilinearCoeffs[3]));   // BottomRow G02 Pixel * coeff3
+    *dstPtrB = (U)(((*(srcRowPtrsForInterp[0] + loc1 + 2)) * bilinearCoeffs[0]) +    // TopRow B01 Pixel * coeff0
+                   ((*(srcRowPtrsForInterp[0] + loc2 + 2)) * bilinearCoeffs[1]) +    // TopRow B02 Pixel * coeff1
+                   ((*(srcRowPtrsForInterp[1] + loc1 + 2)) * bilinearCoeffs[2]) +    // BottomRow B01 Pixel * coeff2
+                   ((*(srcRowPtrsForInterp[1] + loc2 + 2)) * bilinearCoeffs[3]));   // BottomRow B02 Pixel * coeff3
 }
 
 template <typename T, typename U>
@@ -5699,7 +5905,7 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
                         for(int k = 0; k < filter.size; k += filterKernelStride)
                         {
                             // Generate mask to determine the negative indices in the iteration
-                            __m128i pxNegativeIndexMask[numOutPixels];
+                            __m128 pNegativeIndexMask[numOutPixels];
                             __m128i pxKernelIdx = _mm_set1_epi32(k);
                             __m128 pInputR[numOutPixels], pInputG[numOutPixels], pInputB[numOutPixels], pCoeffs[numOutPixels];
                             Rpp32s kernelAdd = (k + filterKernelStride) > filter.size ? filterKernelSizeOverStride : filterKernelStride;
@@ -5710,7 +5916,7 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
 
                             for(int l = 0; l < numOutPixels; l++)
                             {
-                                pxNegativeIndexMask[l] = _mm_cmplt_epi32(_mm_add_epi32(_mm_add_epi32(pxIdx[l], pxKernelIdx), xmm_pDstLocInit), xmm_px0);    // Generate mask to determine the negative indices in the iteration
+                                pNegativeIndexMask[l] = _mm_castsi128_ps(_mm_cmplt_epi32(_mm_add_epi32(_mm_add_epi32(pxIdx[l], pxKernelIdx), xmm_pxDstLocInit), xmm_px0));    // Generate mask to determine the negative indices in the iteration
                                 Rpp32s srcx = index[x + l] + k;
 
                                 // Load filterKernelStride(4) consecutive pixels
@@ -5720,9 +5926,9 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
                                 pCoeffs[l] = _mm_loadu_ps(&(coeffs[coeffIdx + ((l + k) * 4)]));        // Load coefficients
 
                                 // If negative index is present replace the input pixel value with first value in the row
-                                pInputR[l] = _mm_blendv_ps(pInputR[l], pFirstValR, pxNegativeIndexMask[l]);
-                                pInputG[l] = _mm_blendv_ps(pInputG[l], pFirstValG, pxNegativeIndexMask[l]);
-                                pInputB[l] = _mm_blendv_ps(pInputB[l], pFirstValB, pxNegativeIndexMask[l]);
+                                pInputR[l] = _mm_blendv_ps(pInputR[l], pFirstValR, pNegativeIndexMask[l]);
+                                pInputG[l] = _mm_blendv_ps(pInputG[l], pFirstValG, pNegativeIndexMask[l]);
+                                pInputB[l] = _mm_blendv_ps(pInputB[l], pFirstValB, pNegativeIndexMask[l]);
                             }
 
                             // Perform transpose operation to arrange input pixels from different output locations in each vector
@@ -5908,7 +6114,7 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
                         pxIdx[3] = _mm_set1_epi32(index[x + 3]);
                         for(int k = 0; k < filter.size; k += filterKernelStride)
                         {
-                            __m128i pxNegativeIndexMask[numOutPixels];
+                            __m128 pNegativeIndexMask[numOutPixels];
                             __m128i pxKernelIdx = _mm_set1_epi32(k);
                             __m128 pInput[numOutPixels], pCoeffs[numOutPixels];
                             Rpp32s kernelAdd = (k + filterKernelStride) > filter.size ? filterKernelSizeOverStride : filterKernelStride;
@@ -5916,10 +6122,10 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
                             set_zeros(pCoeffs, numOutPixels);
                             for(int l = 0; l < numOutPixels; l++)
                             {
-                                pxNegativeIndexMask[l] = _mm_cmplt_epi32(_mm_add_epi32(_mm_add_epi32(pxIdx[l], pxKernelIdx), xmm_pDstLocInit), xmm_px0);    // Generate mask to determine the negative indices in the iteration
+                                pNegativeIndexMask[l] = _mm_castsi128_ps(_mm_cmplt_epi32(_mm_add_epi32(_mm_add_epi32(pxIdx[l], pxKernelIdx), xmm_pxDstLocInit), xmm_px0));    // Generate mask to determine the negative indices in the iteration
                                 rpp_simd_load(rpp_load4_f32_to_f32, &inRowPtr[index[x + l] + k], &pInput[l]);   // Load filterKernelStride(4) consecutive pixels
                                 pCoeffs[l] = _mm_loadu_ps(&(coeffs[coeffIdx + ((l + k) * 4)]));                 // Load coefficients
-                                pInput[l] = _mm_blendv_ps(pInput[l], pFirstVal, pxNegativeIndexMask[l]);        // If negative index is present replace the pixel value with first value in the row
+                                pInput[l] = _mm_blendv_ps(pInput[l], pFirstVal, pNegativeIndexMask[l]);         // If negative index is present replace the pixel value with first value in the row
                             }
                             _MM_TRANSPOSE4_PS(pInput[0], pInput[1], pInput[2], pInput[3]);  // Perform transpose operation to arrange input pixels from different output locations in each vector
                             for (int l = 0; l < kernelAdd; l++)
@@ -5972,6 +6178,25 @@ inline void compute_separable_horizontal_resample(Rpp32f *inputPtr, T *outputPtr
     }
 }
 
+inline void compute_jitter_src_loc_avx(__m256i *pxXorwowStateX, __m256i *pxXorwowStateCounter, __m256 &pRow, __m256 &pCol, __m256 &pKernelSize, __m256 &pBound, __m256 &pHeightLimit, __m256 &pWidthLimit, __m256 &pStride, __m256 &pChannel, Rpp32s *srcLoc)
+{
+    __m256 pRngX = rpp_host_rng_xorwow_8_f32_avx(pxXorwowStateX, pxXorwowStateCounter);
+    __m256 pRngY = rpp_host_rng_xorwow_8_f32_avx(pxXorwowStateX, pxXorwowStateCounter);
+    __m256 pX = _mm256_mul_ps(pRngX, pKernelSize);
+    __m256 pY = _mm256_mul_ps(pRngY, pKernelSize);
+    pX = _mm256_max_ps(_mm256_min_ps(_mm256_floor_ps(_mm256_add_ps(pRow, _mm256_sub_ps(pX, pBound))), pHeightLimit), avx_p0);
+    pY = _mm256_max_ps(_mm256_min_ps(_mm256_floor_ps(_mm256_add_ps(pCol, _mm256_sub_ps(pY, pBound))), pWidthLimit), avx_p0);
+    __m256i pxSrcLoc = _mm256_cvtps_epi32(_mm256_fmadd_ps(pX, pStride, _mm256_mul_ps(pY, pChannel)));
+    _mm256_storeu_si256((__m256i*) srcLoc, pxSrcLoc);
+}
+
+inline void compute_jitter_src_loc(RpptXorwowStateBoxMuller *xorwowState, Rpp32s row, Rpp32s col, Rpp32s kSize, Rpp32s heightLimit, Rpp32s widthLimit, Rpp32s stride, Rpp32s bound, Rpp32s channels, Rpp32s &loc)
+{
+    Rpp32u heightIncrement = rpp_host_rng_xorwow_f32(xorwowState) * kSize;
+    Rpp32u widthIncrement = rpp_host_rng_xorwow_f32(xorwowState) * kSize;
+    loc = std::max(std::min(static_cast<int>(row + heightIncrement - bound), heightLimit), 0) * stride;
+    loc += std::max(std::min(static_cast<int>(col + widthIncrement  - bound), (widthLimit - 1)), 0) * channels;
+}
 inline void compute_sum_16_host(__m256i *p, __m256i *pSum)
 {
     pSum[0] = _mm256_add_epi32(_mm256_add_epi32(p[0], p[1]), pSum[0]); //add 16 values to 8
@@ -5994,6 +6219,46 @@ inline void compute_sum_24_host(__m256d *p, __m256d *pSumR, __m256d *pSumG, __m2
     pSumR[0] = _mm256_add_pd(_mm256_add_pd(p[0], p[1]), pSumR[0]); //add 8R values and bring it down to 4
     pSumG[0] = _mm256_add_pd(_mm256_add_pd(p[2], p[3]), pSumG[0]); //add 8G values and bring it down to 4
     pSumB[0] = _mm256_add_pd(_mm256_add_pd(p[4], p[5]), pSumB[0]); //add 8B values and bring it down to 4
+}
+
+inline void compute_variance_8_host(__m256d *p1, __m256d *pMean, __m256d *pVar)
+{
+    __m256d pSub = _mm256_sub_pd(p1[0], pMean[0]);
+    pVar[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVar[0]);
+    pSub = _mm256_sub_pd(p1[1], pMean[0]);
+    pVar[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVar[0]);
+}
+
+inline void compute_variance_channel_pln3_24_host(__m256d *p1, __m256d *pMeanR, __m256d *pMeanG, __m256d *pMeanB, __m256d *pVarR, __m256d *pVarG, __m256d *pVarB)
+{
+    __m256d pSub = _mm256_sub_pd(p1[0], pMeanR[0]);
+    pVarR[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarR[0]);
+    pSub = _mm256_sub_pd(p1[1], pMeanR[0]);
+    pVarR[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarR[0]);
+    pSub = _mm256_sub_pd(p1[2], pMeanG[0]);
+    pVarG[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarG[0]);
+    pSub = _mm256_sub_pd(p1[3], pMeanG[0]);
+    pVarG[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarG[0]);
+    pSub = _mm256_sub_pd(p1[4], pMeanB[0]);
+    pVarB[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarB[0]);
+    pSub = _mm256_sub_pd(p1[5], pMeanB[0]);
+    pVarB[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarB[0]);
+}
+
+inline void compute_variance_image_pln3_24_host(__m256d *p1, __m256d *pMean, __m256d *pVarR, __m256d *pVarG, __m256d *pVarB)
+{
+    __m256d pSub = _mm256_sub_pd(p1[0], pMean[0]);
+    pVarR[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarR[0]);
+    pSub = _mm256_sub_pd(p1[1], pMean[0]);
+    pVarR[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarR[0]);
+    pSub = _mm256_sub_pd(p1[2], pMean[0]);
+    pVarG[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarG[0]);
+    pSub = _mm256_sub_pd(pMean[0], p1[3]);
+    pVarG[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarG[0]);
+    pSub = _mm256_sub_pd(p1[4], pMean[0]);
+    pVarB[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarB[0]);
+    pSub = _mm256_sub_pd(p1[5], pMean[0]);
+    pVarB[0] = _mm256_add_pd(_mm256_mul_pd(pSub, pSub), pVarB[0]);
 }
 
 inline void compute_vignette_48_host(__m256 *p, __m256 &pMultiplier, __m256 &pILocComponent, __m256 &pJLocComponent)
@@ -6337,5 +6602,133 @@ inline void compute_remap_src_loc(Rpp32f rowLoc, Rpp32f colLoc, Rpp32s &srcLoc, 
     srcLoc = (rowLoc * stride) + colLoc * channels;
 }
 
+inline void compute_log_16_host(__m256 *p)
+{
+    p[0] = log_ps(p[0]);    // log compute
+    p[1] = log_ps(p[1]);    // log compute
+}
+
+inline void compute_transpose4x8_avx(__m256 *pSrc, __m128 *pDst)
+{
+    __m256 tmp0, tmp1, tmp2, tmp3;
+    tmp0 = _mm256_shuffle_ps(pSrc[0], pSrc[1], 0x44);   /* shuffle to get [P01|P02|P09|P10|P05|P06|P13|P14] */
+    tmp2 = _mm256_shuffle_ps(pSrc[0], pSrc[1], 0xEE);   /* shuffle to get [P03|P04|P11|P12|P07|P08|P15|P16] */
+    tmp1 = _mm256_shuffle_ps(pSrc[2], pSrc[3], 0x44);   /* shuffle to get [P17|P18|P25|P26|P21|P22|P29|P30] */
+    tmp3 = _mm256_shuffle_ps(pSrc[2], pSrc[3], 0xEE);   /* shuffle to get [P19|P20|P27|P28|P23|P24|P31|P32] */
+    pSrc[0] = _mm256_shuffle_ps(tmp0, tmp1, 0x88);  /* shuffle to get [P01|P09|P17|P25|P05|P13|P21|P29] */
+    pSrc[1] = _mm256_shuffle_ps(tmp0, tmp1, 0xDD);  /* shuffle to get [P02|P10|P18|P26|P06|P14|P22|P30] */
+    pSrc[2] = _mm256_shuffle_ps(tmp2, tmp3, 0x88);  /* shuffle to get [P03|P11|P19|P27|P07|P15|P23|P31] */
+    pSrc[3] = _mm256_shuffle_ps(tmp2, tmp3, 0xDD);  /* shuffle to get [P04|P12|P20|P28|P08|P16|P24|P32] */
+
+    pDst[0] = _mm256_castps256_ps128(pSrc[0]);  /* extract [P01|P09|P17|P25] */
+    pDst[1] = _mm256_castps256_ps128(pSrc[1]);  /* extract [P02|P10|P18|P26] */
+    pDst[2] = _mm256_castps256_ps128(pSrc[2]);  /* extract [P03|P11|P19|P27] */
+    pDst[3] = _mm256_castps256_ps128(pSrc[3]);  /* extract [P04|P12|P20|P28] */
+    pDst[4] = _mm256_extractf128_ps(pSrc[0], 1);    /* extract [P05|P13|P21|P29] */
+    pDst[5] = _mm256_extractf128_ps(pSrc[1], 1);    /* extract [P06|P14|P22|P30] */
+    pDst[6] = _mm256_extractf128_ps(pSrc[2], 1);    /* extract [P07|P15|P23|P31] */
+    pDst[7] = _mm256_extractf128_ps(pSrc[3], 1);    /* extract [P08|P16|P24|P32] */
+}
+
+inline void compute_rain_48_host(__m256 *p1, __m256 *p2, __m256 &pMul)
+{
+    p1[0] = _mm256_fmadd_ps(_mm256_sub_ps(p2[0], p1[0]), pMul, p1[0]);    // alpha-blending adjustment
+    p1[1] = _mm256_fmadd_ps(_mm256_sub_ps(p2[1], p1[1]), pMul, p1[1]);    // alpha-blending adjustment
+    p1[2] = _mm256_fmadd_ps(_mm256_sub_ps(p2[0], p1[2]), pMul, p1[2]);    // alpha-blending adjustment
+    p1[3] = _mm256_fmadd_ps(_mm256_sub_ps(p2[1], p1[3]), pMul, p1[3]);    // alpha-blending adjustment
+    p1[4] = _mm256_fmadd_ps(_mm256_sub_ps(p2[0], p1[4]), pMul, p1[4]);    // alpha-blending adjustment
+    p1[5] = _mm256_fmadd_ps(_mm256_sub_ps(p2[1], p1[5]), pMul, p1[5]);    // alpha-blending adjustment
+}
+
+inline void compute_rain_32_host(__m256 *p1, __m256 *p2, __m256 &pMul)
+{
+    p1[0] = _mm256_fmadd_ps(_mm256_sub_ps(p2[0], p1[0]), pMul, p1[0]);    // alpha-blending adjustment
+    p1[1] = _mm256_fmadd_ps(_mm256_sub_ps(p2[1], p1[1]), pMul, p1[1]);    // alpha-blending adjustment
+    p1[2] = _mm256_fmadd_ps(_mm256_sub_ps(p2[2], p1[2]), pMul, p1[2]);    // alpha-blending adjustment
+    p1[3] = _mm256_fmadd_ps(_mm256_sub_ps(p2[3], p1[3]), pMul, p1[3]);    // alpha-blending adjustment
+}
+
+inline void compute_rain_24_host(__m256 *p1, __m256 p2, __m256 &pMul)
+{
+    p1[0] = _mm256_fmadd_ps(_mm256_sub_ps(p2, p1[0]), pMul, p1[0]);    // alpha-blending adjustment
+    p1[1] = _mm256_fmadd_ps(_mm256_sub_ps(p2, p1[1]), pMul, p1[1]);    // alpha-blending adjustment
+    p1[2] = _mm256_fmadd_ps(_mm256_sub_ps(p2, p1[2]), pMul, p1[2]);    // alpha-blending adjustment
+}
+
+// Compute hanning window
+inline RPP_HOST_DEVICE void hann_window(Rpp32f *output, Rpp32s windowSize)
+{
+    Rpp64f a = (2.0 * M_PI) / windowSize;
+    for (Rpp32s t = 0; t < windowSize; t++)
+    {
+        Rpp64f phase = a * (t + 0.5);
+        output[t] = (0.5 * (1.0 - std::cos(phase)));
+    }
+}
+
+// Compute number of spectrogram windows
+inline RPP_HOST_DEVICE Rpp32s get_num_windows(Rpp32s length, Rpp32s windowLength, Rpp32s windowStep, bool centerWindows)
+{
+    if (!centerWindows)
+        length -= windowLength;
+    return ((length / windowStep) + 1);
+}
+
+// Compute reflect start idx to pad
+inline RPP_HOST_DEVICE Rpp32s get_idx_reflect(Rpp32s loc, Rpp32s minLoc, Rpp32s maxLoc)
+{
+    if (maxLoc - minLoc < 2)
+        return maxLoc - 1;
+    for (;;)
+    {
+        if (loc < minLoc)
+            loc = 2 * minLoc - loc;
+        else if (loc >= maxLoc)
+            loc = 2 * maxLoc - 2 - loc;
+        else
+            break;
+    }
+    return loc;
+}
+
+inline void compute_threshold_8_host(__m256 *p, __m256 *pThresholdParams)
+{
+    p[0] = _mm256_blendv_ps(avx_p0, avx_p1, _mm256_and_ps(_mm256_cmp_ps(p[0], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[0], pThresholdParams[1],_CMP_LE_OQ)));
+}
+
+inline void compute_threshold_16_host(__m256 *p, __m256 *pThresholdParams)
+{
+    p[0] = _mm256_blendv_ps(avx_p0, avx_p255, _mm256_and_ps(_mm256_cmp_ps(p[0], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[0], pThresholdParams[1],_CMP_LE_OQ)));
+    p[1] = _mm256_blendv_ps(avx_p0, avx_p255, _mm256_and_ps(_mm256_cmp_ps(p[1], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[1], pThresholdParams[1],_CMP_LE_OQ)));
+}
+
+inline void compute_threshold_24_host(__m256 *p, __m256 *pThresholdParams)
+{
+    __m256 pChannelCheck[3];
+    pChannelCheck[0] = _mm256_and_ps(_mm256_cmp_ps(p[0], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[0], pThresholdParams[1],_CMP_LE_OQ));
+    pChannelCheck[1] = _mm256_and_ps(_mm256_cmp_ps(p[1], pThresholdParams[2], _CMP_GE_OQ), _mm256_cmp_ps(p[1], pThresholdParams[3],_CMP_LE_OQ));
+    pChannelCheck[2] = _mm256_and_ps(_mm256_cmp_ps(p[2], pThresholdParams[4], _CMP_GE_OQ), _mm256_cmp_ps(p[2], pThresholdParams[5],_CMP_LE_OQ));
+    p[0] = _mm256_blendv_ps(avx_p0, avx_p1, _mm256_and_ps(_mm256_and_ps(pChannelCheck[0], pChannelCheck[1]), pChannelCheck[2]));
+    p[1] = p[0];
+    p[2] = p[0];
+}
+
+inline void compute_threshold_48_host(__m256 *p, __m256 *pThresholdParams)
+{
+    __m256 pChannelCheck[3];
+    pChannelCheck[0] = _mm256_and_ps(_mm256_cmp_ps(p[0], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[0], pThresholdParams[1],_CMP_LE_OQ));
+    pChannelCheck[1] = _mm256_and_ps(_mm256_cmp_ps(p[2], pThresholdParams[2], _CMP_GE_OQ), _mm256_cmp_ps(p[2], pThresholdParams[3],_CMP_LE_OQ));
+    pChannelCheck[2] = _mm256_and_ps(_mm256_cmp_ps(p[4], pThresholdParams[4], _CMP_GE_OQ), _mm256_cmp_ps(p[4], pThresholdParams[5],_CMP_LE_OQ));
+    p[0] = _mm256_blendv_ps(avx_p0, avx_p255, _mm256_and_ps(_mm256_and_ps(pChannelCheck[0], pChannelCheck[1]), pChannelCheck[2]));
+    p[2] = p[0];
+    p[4] = p[0];
+
+    pChannelCheck[0] = _mm256_and_ps(_mm256_cmp_ps(p[1], pThresholdParams[0], _CMP_GE_OQ), _mm256_cmp_ps(p[1], pThresholdParams[1],_CMP_LE_OQ));
+    pChannelCheck[1] = _mm256_and_ps(_mm256_cmp_ps(p[3], pThresholdParams[2], _CMP_GE_OQ), _mm256_cmp_ps(p[3], pThresholdParams[3],_CMP_LE_OQ));
+    pChannelCheck[2] = _mm256_and_ps(_mm256_cmp_ps(p[5], pThresholdParams[4], _CMP_GE_OQ), _mm256_cmp_ps(p[5], pThresholdParams[5],_CMP_LE_OQ));
+    p[1] = _mm256_blendv_ps(avx_p0, avx_p255, _mm256_and_ps(_mm256_and_ps(pChannelCheck[0], pChannelCheck[1]), pChannelCheck[2]));
+    p[3] = p[1];
+    p[5] = p[1];
+}
 
 #endif //RPP_CPU_COMMON_H

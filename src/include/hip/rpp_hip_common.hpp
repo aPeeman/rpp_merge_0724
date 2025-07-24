@@ -26,15 +26,11 @@ SOFTWARE.
 #define RPP_HIP_COMMON_H
 
 #include <hip/hip_runtime.h>
-#include <hip/hip_fp16.h>
-#include <half/half.hpp>
 
 #include "rppdefs.h"
 #include "rpp/handle.hpp"
 #include "rpp_hip_roi_conversion.hpp"
 
-using halfhpp = half_float::half;
-typedef halfhpp Rpp16f;
 typedef unsigned char uchar;
 typedef signed char schar;
 typedef struct { uint   data[ 6]; } d_uint6_s;
@@ -55,7 +51,7 @@ typedef union { float f1[5];                                                    
 typedef union { float f1[6];    float2 f2[3];                                                   }   d_float6;
 typedef union { float f1[7];                                                                    }   d_float7;
 typedef union { float f1[8];    float2 f2[4];   float4 f4[2];                                   }   d_float8;
-typedef union { float f1[9];                                                                    }   d_float9;
+typedef union { float f1[9];    float3 f3[3];                                                   }   d_float9;
 typedef union { float f1[12];   float4 f4[3];                                                   }   d_float12;
 typedef union { float f1[16];   float4 f4[4];   d_float8 f8[2];                                 }   d_float16;
 typedef union { float f1[24];   float2 f2[12];  float3 f3[8];   float4 f4[6];   d_float8 f8[3]; }   d_float24;
@@ -63,12 +59,12 @@ typedef union { float f1[24];   float2 f2[12];  float3 f3[8];   float4 f4[6];   
 // uint
 typedef union { uint ui1[6];    uint2 ui2[3];                                                   }   d_uint6;
 typedef union { uint ui1[8];    uint4 ui4[2];                                                   }   d_uint8;
-typedef union { uint4 ui4[6];   d_uint8 ui8[3];                                                 }   d_uint24;
+typedef union { uint ui1[24];   uint4 ui4[6];   d_uint8 ui8[3];                                 }   d_uint24;
 
 // int
 typedef union { int i1[6];      int2 i2[3];                                                     }   d_int6;
 typedef union { int i1[8];      int4 i4[2];                                                     }   d_int8;
-typedef union { int4 i4[6];     d_int8 i8[3];                                                   }   d_int24;
+typedef union { int i1[24];     int4 i4[6];     d_int8 i8[3];                                   }   d_int24;
 
 // half
 typedef struct { half h1[3];                                                                    }   d_half3_s;
@@ -82,6 +78,7 @@ typedef union { uchar uc1[8];   uchar4 uc4[2];                                  
 typedef union { uchar uc1[24];  uchar4 uc4[6];  uchar3 uc3[8];    d_uchar8 uc8[3];              }   d_uchar24;
 
 // schar
+typedef struct { schar sc1[3];                                                                  }   d_schar3_s;
 typedef struct { schar sc1[8];                                                                  }   d_schar8_s;
 typedef struct { d_schar8_s sc8[3];                                                             }   d_schar24_s;
 
@@ -128,6 +125,7 @@ struct RPPTensorFunctionMetaData
 #define ONE_OVER_256                    0.00390625f
 #define SIX_OVER_360                    0.01666667f
 #define PI                              3.14159265
+#define TWO_PI                          6.2831853
 #define RGB_TO_GREY_WEIGHT_RED          0.299f
 #define RGB_TO_GREY_WEIGHT_GREEN        0.587f
 #define RGB_TO_GREY_WEIGHT_BLUE         0.114f
@@ -154,6 +152,11 @@ struct RPPTensorFunctionMetaData
   (byte & 0x04 ? '1' : '0'), \
   (byte & 0x02 ? '1' : '0'), \
   (byte & 0x01 ? '1' : '0')
+
+// float4 floor
+
+#define FLOOR4(src, dst) \
+dst = make_int4(floorf(src.x), floorf(src.y), floorf(src.z), floorf(src.w));
 
 /******************** HOST FUNCTIONS ********************/
 
@@ -600,6 +603,24 @@ __device__ __forceinline__ void rpp_hip_load8_and_unpack_to_float8_mirror(half *
     srcPtr_f8->f4[1] = make_float4(src1_f2.y, src1_f2.x, src2_f2.y, src2_f2.x);    // write 03-00
 }
 
+// UINT loads without layout toggle (8 UINT pixels)
+
+__device__ __forceinline__ void rpp_hip_load8_and_unpack_to_float8(uint *srcPtr, d_float8 *srcPtr_f8)
+{
+    d_uint8 src_ui8 = *(d_uint8 *)srcPtr;
+    srcPtr_f8->f4[0] = make_float4((float)src_ui8.ui4[0].x, (float)src_ui8.ui4[0].y, (float)src_ui8.ui4[0].z, (float)src_ui8.ui4[0].w);
+    srcPtr_f8->f4[1] = make_float4((float)src_ui8.ui4[1].x, (float)src_ui8.ui4[1].y, (float)src_ui8.ui4[1].z, (float)src_ui8.ui4[1].w);
+}
+
+// INT loads without layout toggle (8 INT pixels)
+
+__device__ __forceinline__ void rpp_hip_load8_and_unpack_to_float8(int *srcPtr, d_float8 *srcPtr_f8)
+{
+    d_int8 src_i8 = *(d_int8 *)srcPtr;
+    srcPtr_f8->f4[0] = make_float4((float)src_i8.i4[0].x, (float)src_i8.i4[0].y, (float)src_i8.i4[0].z, (float)src_i8.i4[0].w);
+    srcPtr_f8->f4[1] = make_float4((float)src_i8.i4[1].x, (float)src_i8.i4[1].y, (float)src_i8.i4[1].z, (float)src_i8.i4[1].w);
+}
+
 // U8 loads without layout toggle PLN3 to PLN3 (24 U8 pixels)
 
 __device__ __forceinline__ void rpp_hip_load24_pln3_and_unpack_to_float24_pln3(uchar *srcPtr, uint increment, d_float24 *srcPtr_f24)
@@ -863,6 +884,36 @@ __device__ __forceinline__ void rpp_hip_load24_pkd3_and_unpack_to_float24_pln3_m
     srcPtr_f24->f4[3] = make_float4(__half2float(src_h24.h1[10]), __half2float(src_h24.h1[ 7]), __half2float(src_h24.h1[ 4]), __half2float(src_h24.h1[ 1]));    // write G03-G00 (mirrored load)
     srcPtr_f24->f4[4] = make_float4(__half2float(src_h24.h1[23]), __half2float(src_h24.h1[20]), __half2float(src_h24.h1[17]), __half2float(src_h24.h1[14]));    // write B07-B04 (mirrored load)
     srcPtr_f24->f4[5] = make_float4(__half2float(src_h24.h1[11]), __half2float(src_h24.h1[ 8]), __half2float(src_h24.h1[ 5]), __half2float(src_h24.h1[ 2]));    // write B03-B00 (mirrored load)
+}
+
+// UINT loads with layout toggle PLN3 to PKD3 (24 UINT pixels)
+
+__device__ __forceinline__ void rpp_hip_load24_pkd3_and_unpack_to_float24_pln3(uint *srcPtr, d_float24 *srcPtr_f24)
+{
+    d_uint24 src_ui24;
+    *(d_uint24_s *)&src_ui24 = *(d_uint24_s *)srcPtr;
+
+    srcPtr_f24->f4[0] = make_float4((float)src_ui24.ui1[ 0], (float)src_ui24.ui1[ 3], (float)src_ui24.ui1[ 6], (float)src_ui24.ui1[ 9]);    // write R00-R03
+    srcPtr_f24->f4[1] = make_float4((float)src_ui24.ui1[12], (float)src_ui24.ui1[15], (float)src_ui24.ui1[18], (float)src_ui24.ui1[21]);    // write R04-R07
+    srcPtr_f24->f4[2] = make_float4((float)src_ui24.ui1[ 1], (float)src_ui24.ui1[ 4], (float)src_ui24.ui1[ 7], (float)src_ui24.ui1[10]);    // write G00-G03
+    srcPtr_f24->f4[3] = make_float4((float)src_ui24.ui1[13], (float)src_ui24.ui1[16], (float)src_ui24.ui1[19], (float)src_ui24.ui1[22]);    // write G04-G07
+    srcPtr_f24->f4[4] = make_float4((float)src_ui24.ui1[ 2], (float)src_ui24.ui1[ 5], (float)src_ui24.ui1[ 8], (float)src_ui24.ui1[11]);    // write B00-B03
+    srcPtr_f24->f4[5] = make_float4((float)src_ui24.ui1[14], (float)src_ui24.ui1[17], (float)src_ui24.ui1[20], (float)src_ui24.ui1[23]);    // write B04-B07
+}
+
+// INT loads with layout toggle PLN3 to PKD3 (24 INT pixels)
+
+__device__ __forceinline__ void rpp_hip_load24_pkd3_and_unpack_to_float24_pln3(int *srcPtr, d_float24 *srcPtr_f24)
+{
+    d_int24 src_i24;
+    *(d_int24_s *)&src_i24 = *(d_int24_s *)srcPtr;
+
+    srcPtr_f24->f4[0] = make_float4((float)src_i24.i1[ 0], (float)src_i24.i1[ 3], (float)src_i24.i1[ 6], (float)src_i24.i1[ 9]);    // write R00-R03
+    srcPtr_f24->f4[1] = make_float4((float)src_i24.i1[12], (float)src_i24.i1[15], (float)src_i24.i1[18], (float)src_i24.i1[21]);    // write R04-R07
+    srcPtr_f24->f4[2] = make_float4((float)src_i24.i1[ 1], (float)src_i24.i1[ 4], (float)src_i24.i1[ 7], (float)src_i24.i1[10]);    // write G00-G03
+    srcPtr_f24->f4[3] = make_float4((float)src_i24.i1[13], (float)src_i24.i1[16], (float)src_i24.i1[19], (float)src_i24.i1[22]);    // write G04-G07
+    srcPtr_f24->f4[4] = make_float4((float)src_i24.i1[ 2], (float)src_i24.i1[ 5], (float)src_i24.i1[ 8], (float)src_i24.i1[11]);    // write B00-B03
+    srcPtr_f24->f4[5] = make_float4((float)src_i24.i1[14], (float)src_i24.i1[17], (float)src_i24.i1[20], (float)src_i24.i1[23]);    // write B04-B07
 }
 
 // U8 loads with layout toggle PLN3 to PKD3 (24 U8 pixels)
@@ -1599,6 +1650,49 @@ __device__ __forceinline__ void rpp_hip_load24_pkd3_to_uchar8_pln3(half *srcPtr,
     rpp_hip_load24_pkd3_to_uchar8_pln3((float *)&src_f24, srcPtrs_uchar8);
 }
 
+// U8 loads with layout toggle PKD3 to PLN3 (24 U8 pixels) into d_uchar24
+
+__device__ __forceinline__ void rpp_hip_load24_pkd3_and_unpack_to_uchar24_pln3(uchar *srcPtr, d_uchar24 *srcPtr_uc24)
+{
+    d_uchar24 src_uc24;
+    *(d_uchar24_s *)&src_uc24 = *(d_uchar24_s *)srcPtr;
+
+    srcPtr_uc24->uc4[0] = make_uchar4(src_uc24.uc1[ 0], src_uc24.uc1[ 3], src_uc24.uc1[ 6], src_uc24.uc1[ 9]);    // write R00-R03
+    srcPtr_uc24->uc4[1] = make_uchar4(src_uc24.uc1[12], src_uc24.uc1[15], src_uc24.uc1[18], src_uc24.uc1[21]);    // write R04-R07
+    srcPtr_uc24->uc4[2] = make_uchar4(src_uc24.uc1[ 1], src_uc24.uc1[ 4], src_uc24.uc1[ 7], src_uc24.uc1[10]);    // write G00-G03
+    srcPtr_uc24->uc4[3] = make_uchar4(src_uc24.uc1[13], src_uc24.uc1[16], src_uc24.uc1[19], src_uc24.uc1[22]);    // write G04-G07
+    srcPtr_uc24->uc4[4] = make_uchar4(src_uc24.uc1[ 2], src_uc24.uc1[ 5], src_uc24.uc1[ 8], src_uc24.uc1[11]);    // write B00-B03
+    srcPtr_uc24->uc4[5] = make_uchar4(src_uc24.uc1[14], src_uc24.uc1[17], src_uc24.uc1[20], src_uc24.uc1[23]);    // write B00-B03
+}
+
+// U8 loads with layout non toggle PKD3 to PKD3 (24 U8 pixels) into d_uchar24
+
+__device__ __forceinline__ void rpp_hip_load24_pkd3_and_unpack_to_uchar24_pkd3(uchar *srcPtr, d_uchar24 *srcPtr_uc24)
+{
+    *(d_uchar24_s *)srcPtr_uc24 = *(d_uchar24_s *)srcPtr;
+
+}
+
+// U8 loads with layout non toggle PLN3 to PKD3 (24 U8 pixels) into d_uchar24
+
+__device__ __forceinline__ void rpp_hip_load24_pln3_and_unpack_to_uchar24_pkd3(uchar *srcPtr, uint increment, d_uchar24 *srcPtr_uc24)
+{
+    d_uchar24 src_uc24;
+
+    *(d_uchar8_s *)&(src_uc24.uc8[0]) = *(d_uchar8_s *)srcPtr;
+    srcPtr += increment;
+    *(d_uchar8_s *)&(src_uc24.uc8[1]) = *(d_uchar8_s *)srcPtr;
+    srcPtr += increment;
+    *(d_uchar8_s *)&(src_uc24.uc8[2]) = *(d_uchar8_s *)srcPtr;
+
+    srcPtr_uc24->uc4[0] = make_uchar4(src_uc24.uc1[ 0], src_uc24.uc1[ 8], src_uc24.uc1[16], src_uc24.uc1[ 1]);    // write R00G00B00R01
+    srcPtr_uc24->uc4[1] = make_uchar4(src_uc24.uc1[ 9], src_uc24.uc1[17], src_uc24.uc1[ 2], src_uc24.uc1[10]);    // write G01B01R02G02
+    srcPtr_uc24->uc4[2] = make_uchar4(src_uc24.uc1[18], src_uc24.uc1[ 3], src_uc24.uc1[11], src_uc24.uc1[19]);    // write B02R03G03B03
+    srcPtr_uc24->uc4[3] = make_uchar4(src_uc24.uc1[ 4], src_uc24.uc1[12], src_uc24.uc1[20], src_uc24.uc1[ 5]);    // write R04G04B04R05
+    srcPtr_uc24->uc4[4] = make_uchar4(src_uc24.uc1[13], src_uc24.uc1[21], src_uc24.uc1[ 6], src_uc24.uc1[14]);    // write G05B05R06G06
+    srcPtr_uc24->uc4[5] = make_uchar4(src_uc24.uc1[22], src_uc24.uc1[ 7], src_uc24.uc1[15], src_uc24.uc1[23]);    // write B06R07G07B07
+}
+
 // -------------------- Set 7 - Templated layout toggles --------------------
 
 // PKD3 to PLN3
@@ -1744,6 +1838,27 @@ __device__ __forceinline__ void rpp_hip_load24_pkd3_to_int24_pln3(schar *srcPtr,
     rpp_hip_pack_int8(&src_sc24.sc8[0], &srcPtr_i24->i8[0]);     // write R00-R07
     rpp_hip_pack_int8(&src_sc24.sc8[1], &srcPtr_i24->i8[1]);     // write G00-G07
     rpp_hip_pack_int8(&src_sc24.sc8[2], &srcPtr_i24->i8[2]);     // write B00-B07
+}
+
+// ------------------------- Set 9 - Stores from uchar8 --------------------------
+
+__device__ __forceinline__ void rpp_hip_pack_uchar8_and_store8(uchar *dstPtr, d_uchar8 *dstPtr_f8)
+{
+    *(d_uchar8_s *)dstPtr = *(d_uchar8_s *)dstPtr_f8;
+}
+
+__device__ __forceinline__ void rpp_hip_pack_uchar24_pkd3_and_store24_pkd3(uchar *dstPtr, d_uchar24 *dstPtr_f24)
+{
+    *(d_uchar24_s *)dstPtr = *(d_uchar24_s *)dstPtr_f24;
+}
+
+__device__ __forceinline__ void rpp_hip_pack_uchar24_pln3_and_store24_pln3(uchar *dstPtr, uint increment, d_uchar24 *dstPtr_f24)
+{
+    *(d_uchar8_s *)dstPtr = *(d_uchar8_s *)&(dstPtr_f24->uc8[0]);
+    dstPtr += increment;
+    *(d_uchar8_s *)dstPtr = *(d_uchar8_s *)&(dstPtr_f24->uc8[1]);
+    dstPtr += increment;
+    *(d_uchar8_s *)dstPtr = *(d_uchar8_s *)&(dstPtr_f24->uc8[2]);
 }
 
 // /******************** DEVICE MATH HELPER FUNCTIONS ********************/
@@ -1908,6 +2023,22 @@ __device__ __forceinline__ void rpp_hip_math_multiply24_const(d_float24 *src_f24
     dst_f24->f4[5] = src_f24->f4[5] * multiplier_f4;
 }
 
+// d_float8 divide
+
+__device__ __forceinline__ void rpp_hip_math_divide8(d_float8 *src1Ptr_f8, d_float8 *src2Ptr_f8, d_float8 *dstPtr_f8)
+{
+    dstPtr_f8->f4[0] = src1Ptr_f8->f4[0] / src2Ptr_f8->f4[0];
+    dstPtr_f8->f4[1] = src1Ptr_f8->f4[1] / src2Ptr_f8->f4[1];
+}
+
+// d_float8 divide with constant
+
+__device__ __forceinline__ void rpp_hip_math_divide8_const(d_float8 *src_f8, d_float8 *dst_f8, float4 divisor_f4)
+{
+    dst_f8->f4[0] = divisor_f4 / src_f8->f4[0];
+    dst_f8->f4[1] = divisor_f4 / src_f8->f4[1];
+}
+
 // d_float8 bitwiseAND
 
 __device__ __forceinline__ void rpp_hip_math_bitwiseAnd8(d_float8 *src1_f8, d_float8 *src2_f8, d_float8 *dst_f8)
@@ -1934,6 +2065,18 @@ __device__ __forceinline__ void rpp_hip_math_bitwiseOr8(d_float8 *src1_f8, d_flo
         dst_f8->f1[5] = (float)((uchar)(src1_f8->f1[5]) | (uchar)(src2_f8->f1[5]));
         dst_f8->f1[6] = (float)((uchar)(src1_f8->f1[6]) | (uchar)(src2_f8->f1[6]));
         dst_f8->f1[7] = (float)((uchar)(src1_f8->f1[7]) | (uchar)(src2_f8->f1[7]));
+}
+
+__device__ __forceinline__ void rpp_hip_math_bitwiseXor8(d_uchar8 *src1_uc8, d_uchar8 *src2_uc8, d_uchar8 *dst_uc8)
+{
+        dst_uc8->uc1[0] = src1_uc8->uc1[0] ^ src2_uc8->uc1[0];
+        dst_uc8->uc1[1] = src1_uc8->uc1[1] ^ src2_uc8->uc1[1];
+        dst_uc8->uc1[2] = src1_uc8->uc1[2] ^ src2_uc8->uc1[2];
+        dst_uc8->uc1[3] = src1_uc8->uc1[3] ^ src2_uc8->uc1[3];
+        dst_uc8->uc1[4] = src1_uc8->uc1[4] ^ src2_uc8->uc1[4];
+        dst_uc8->uc1[5] = src1_uc8->uc1[5] ^ src2_uc8->uc1[5];
+        dst_uc8->uc1[6] = src1_uc8->uc1[6] ^ src2_uc8->uc1[6];
+        dst_uc8->uc1[7] = src1_uc8->uc1[7] ^ src2_uc8->uc1[7];
 }
 
 __device__ __forceinline__ float rpp_hip_math_inverse_sqrt1(float x)
@@ -2001,6 +2144,21 @@ __device__ __forceinline__ float rpp_hip_math_sinc(float x)
     return (fabsf(x) < 1e-5f) ? (1.0f - x * x * ONE_OVER_6) : sinf(x) / x;
 }
 
+__device__ __forceinline__ void rpp_hip_math_log(d_float8 *src_f8, d_float8 *dst_f8)
+{
+    for(int i = 0; i < 8; i++)
+        src_f8->f1[i] = (!src_f8->f1[i]) ? std::nextafter(0.0f, 1.0f) : fabsf(src_f8->f1[i]);
+
+    dst_f8->f1[0] = __logf(src_f8->f1[0]);
+    dst_f8->f1[1] = __logf(src_f8->f1[1]);
+    dst_f8->f1[2] = __logf(src_f8->f1[2]);
+    dst_f8->f1[3] = __logf(src_f8->f1[3]);
+    dst_f8->f1[4] = __logf(src_f8->f1[4]);
+    dst_f8->f1[5] = __logf(src_f8->f1[5]);
+    dst_f8->f1[6] = __logf(src_f8->f1[6]);
+    dst_f8->f1[7] = __logf(src_f8->f1[7]);
+}
+
 // /******************** DEVICE RANDOMIZATION HELPER FUNCTIONS ********************/
 
 template<typename T>
@@ -2045,7 +2203,8 @@ __device__ __forceinline__ float rpp_hip_rng_xorwow_f32(T *xorwowState)
     return  outFloat - 1;                                                                           // return 0 <= outFloat < 1
 }
 
-__device__ __forceinline__ void rpp_hip_rng_8_xorwow_f32(RpptXorwowState *xorwowState, d_float8 *randomNumbersPtr_f8)
+template<typename T>
+__device__ __forceinline__ void rpp_hip_rng_8_xorwow_f32(T *xorwowState, d_float8 *randomNumbersPtr_f8)
 {
     randomNumbersPtr_f8->f1[0] = rpp_hip_rng_xorwow_f32(xorwowState);
     randomNumbersPtr_f8->f1[1] = rpp_hip_rng_xorwow_f32(xorwowState);
@@ -2964,6 +3123,64 @@ __device__ __forceinline__ void rpp_hip_interpolate24_nearest_neighbor_pkd3(T *s
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[5], locPtrSrc_f16->f1[13], roiPtrSrc_i4, &(dst_f24->f3[5]));
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[6], locPtrSrc_f16->f1[14], roiPtrSrc_i4, &(dst_f24->f3[6]));
     rpp_hip_interpolate3_nearest_neighbor_pkd3(srcPtr, srcStrideH, locPtrSrc_f16->f1[7], locPtrSrc_f16->f1[15], roiPtrSrc_i4, &(dst_f24->f3[7]));
+}
+
+// copy ROI region from input to output for NCDHW layout tensors
+
+template<typename T>
+__global__ void copy_ncdhw_hip_tensor(T *srcPtr,
+                                      uint3 srcStridesCDH,
+                                      T *dstPtr,
+                                      uint3 dstStridesCDH,
+                                      int channels,
+                                      RpptROI3DPtr roiGenericSrc)
+{
+    int id_x = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x) * 8;        // W - inner most dim vectorized
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;              // H - second to inner
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;              // D - outer most dim
+
+    if ((id_z >= roiGenericSrc->xyzwhdROI.roiDepth) || (id_y >= roiGenericSrc->xyzwhdROI.roiHeight) || (id_x >= roiGenericSrc->xyzwhdROI.roiWidth))
+    {
+        return;
+    }
+
+    uint srcIdx = ((id_z + roiGenericSrc->xyzwhdROI.xyz.z) * srcStridesCDH.y) + ((id_y + roiGenericSrc->xyzwhdROI.xyz.y) * srcStridesCDH.z) + (id_x + roiGenericSrc->xyzwhdROI.xyz.x);
+    uint dstIdx = (id_z * dstStridesCDH.y) + (id_y * dstStridesCDH.z) + id_x;
+
+    d_float8 val_f8;
+    for(int c = 0; c < channels; c++)
+    {
+        rpp_hip_load8_and_unpack_to_float8(srcPtr + srcIdx, &val_f8);
+        rpp_hip_pack_float8_and_store8(dstPtr + dstIdx, &val_f8);
+        srcIdx += srcStridesCDH.x;
+        dstIdx += dstStridesCDH.x;
+    }
+}
+
+// copy ROI region from input to output for NDHWC layout tensors
+
+template<typename T>
+__global__ void copy_ndhwc_hip_tensor(T *srcPtr,
+                                      uint2 srcStridesDH,
+                                      T *dstPtr,
+                                      uint2 dstStridesDH,
+                                      RpptROI3DPtr roiGenericSrc)
+{
+    int id_x = (hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x) * 8;        // WC - inner most dim vectorized
+    int id_y = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;              // H - second to inner
+    int id_z = hipBlockIdx_z * hipBlockDim_z + hipThreadIdx_z;              // D - outer most dim
+
+    if ((id_z >= roiGenericSrc->xyzwhdROI.roiDepth) || (id_y >= roiGenericSrc->xyzwhdROI.roiHeight) || (id_x >= roiGenericSrc->xyzwhdROI.roiWidth))
+    {
+        return;
+    }
+
+    uint srcIdx = ((id_z + roiGenericSrc->xyzwhdROI.xyz.z) * srcStridesDH.x) + ((id_y + roiGenericSrc->xyzwhdROI.xyz.y) * srcStridesDH.y) + (id_x + roiGenericSrc->xyzwhdROI.xyz.x) * 3;
+    uint dstIdx = (id_z * dstStridesDH.x) + (id_y * dstStridesDH.y) + id_x * 3;
+
+    d_float24 val_f24;
+    rpp_hip_load24_pkd3_and_unpack_to_float24_pln3(srcPtr + srcIdx, &val_f24);
+    rpp_hip_pack_float24_pln3_and_store24_pkd3(dstPtr + dstIdx, &val_f24);
 }
 
 // PKD3->PLN3 layout toggle kernel

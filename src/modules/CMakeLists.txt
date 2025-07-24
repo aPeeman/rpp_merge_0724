@@ -93,10 +93,10 @@ if( "${BACKEND}" STREQUAL "HIP")
     list(APPEND Rpp_Source ${CPPFILES} ${MOD_HIP_CPP} ${MOD_HIP_CPP_KERNELS})
     #message("-- ${Green}HIP kernels added${ColourReset}")
 
-    # Set HIP compiler and flags
-    set(CMAKE_CXX_COMPILER ${COMPILER_FOR_HIP})
+    # Set compiler flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${HIP_HIPCC_FLAGS}")
     set_source_files_properties(rppt_tensor_audio_augmentations.cpp PROPERTIES COMPILE_FLAGS -mno-fma)
+    set_source_files_properties(rppt_tensor_statistical_operations.cpp PROPERTIES COMPILE_FLAGS -mno-fma) # no-fma flag added to get the exact output match with golden outputs
 
     # Add HIP specific preprocessor flags
     add_definitions(-DHIP_COMPILE)
@@ -111,6 +111,7 @@ elseif( "${BACKEND}" STREQUAL "OCL")
     list(APPEND Rpp_Source ${CPPFILES} ${MOD_CL_CPP})
     #message("-- ${Green}OpenCL kernels added!${ColourReset}")
     set_source_files_properties(rppt_tensor_audio_augmentations.cpp PROPERTIES COMPILE_FLAGS -mno-fma)
+    set_source_files_properties(rppt_tensor_statistical_operations.cpp PROPERTIES COMPILE_FLAGS -mno-fma) # no-fma flag added to get the exact output match with golden outputs
 
     # Add OpenCL specific preprocessor flags
     add_definitions(-DOCL_COMPILE)
@@ -125,6 +126,7 @@ elseif( "${BACKEND}" STREQUAL "CPU")
     # Add CPU specific includes
     set(INCLUDE_LIST ${CMAKE_SOURCE_DIR}/src/include/common/)
     set_source_files_properties(rppt_tensor_audio_augmentations.cpp PROPERTIES COMPILE_FLAGS -mno-fma)
+    set_source_files_properties(rppt_tensor_statistical_operations.cpp PROPERTIES COMPILE_FLAGS -mno-fma) # no-fma flag added to get the exact output match with golden outputs
 endif()
 #message("-- ${White}AMD RPP ${PROJECT_NAME} -- Include Directories:${INCLUDE_LIST}${ColourReset}")
 add_compile_options("-Wno-unused-result")

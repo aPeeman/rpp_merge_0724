@@ -265,3 +265,4 @@ elif (testType == 1):   # Performance tests
 
     for log_file in log_file_list:
         print_performance_tests_summary(log_file, functionality_group_list, numRuns)
+

@@ -1,89 +1,68 @@
-# AMD ROCm Performance Primitives (RPP) Test Suite
+# RPP Test Suite
 
-This repository contains three test suites for the AMD ROCm Performance Primitives (RPP) library: for image/voxel/audio processing. These test suites can be used to validate the functionality and performance of the AMD ROCm Performance Primitives (RPP) image/voxel/audio libraries.
+This repository contains four test suites for the RPP library: `image`/`voxel`/`audio`/`miscellaneous` augmentations processing. These test suites can be used to validate the functionality and performance of the RPP `image`/`voxel`/`audio`/`miscellaneous` augmentation functionalities.
 
-## Test suite prerequisites
+## Prerequisites
 
-* OpenCV `3.4.0`/`4.5.5`
-
-  * Install OpenCV prerequisites:
-
-    ```bash
-    sudo apt-get update
-    sudo -S apt-get -y --allow-unauthenticated install build-essential libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev python-dev python-numpy
-    sudo -S apt-get -y --allow-unauthenticated install libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev unzip wget
-    ```
-
-  * Download OpenCV `3.4.0` /`4.5.5`:
-
-    ```bash
-    wget https://github.com/opencv/opencv/archive/3.4.0.zip
-    unzip 3.4.0.zip
-    cd opencv-3.4.0/
-    ```
-
-    OR
-
-    ```bash
-    wget https://github.com/opencv/opencv/archive/4.5.5.zip
-    unzip 4.5.5.zip
-    cd opencv-4.5.5/
-    ```
-
-  * Install OpenCV:
-
-    ```bash
-    mkdir build
-    cd build
-    cmake -D WITH_GTK=ON -D WITH_JPEG=ON -D BUILD_JPEG=ON -D WITH_OPENCL=OFF -D WITH_OPENCLAMDFFT=OFF -D WITH_OPENCLAMDBLAS=OFF -D WITH_VA_INTEL=OFF -D WITH_OPENCL_SVM=OFF -D CMAKE_INSTALL_PREFIX=/usr/local ..
-    sudo -S make -j128 <Or other number of threads to use>
-    sudo -S make install
-    sudo -S ldconfig
-    ```
-
-* Install TurboJpeg:
-
-  ```bash
+* [Turbo JPEG](https://libjpeg-turbo.org/)
+  * Source: `https://github.com/libjpeg-turbo/libjpeg-turbo.git`
+  * Tag: [3.0.2](https://github.com/libjpeg-turbo/libjpeg-turbo/releases/tag/3.0.2)
+  ```shell
   sudo apt-get install nasm
   sudo apt-get install wget
-  git clone -b 2.0.6.1 https://github.com/rrawther/libjpeg-turbo.git
+  git clone -b 3.0.2 https://github.com/libjpeg-turbo/libjpeg-turbo.git
   cd libjpeg-turbo
   mkdir build
   cd build
   cmake -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_BUILD_TYPE=RELEASE  \
         -DENABLE_STATIC=FALSE       \
-        -DCMAKE_INSTALL_DOCDIR=/usr/share/doc/libjpeg-turbo-2.0.3 \
         -DCMAKE_INSTALL_DEFAULT_LIBDIR=lib  \
+        -DWITH_JPEG8=TRUE           \
         ..
   make -j$nproc
   sudo make install
   ```
-* Libsndfile installation
-  ```
-  sudo apt-get update
-  sudo apt-get install libsndfile1-dev
-  ```
 
-* Imagemagick
-  ```
-  sudo apt-get install imagemagick
-  ```
-
-* Nifti-Imaging nifti_clib
-  ```
-  git clone git@github.com:NIFTI-Imaging/nifti_clib.git
+* Nifti-Imaging - [nifti_clib](https://github.com/NIFTI-Imaging/nifti_clib)
+  ```shell
+  git clone https://github.com/NIFTI-Imaging/nifti_clib.git
   cd nifti_clib
+  git reset --hard 84e323cc3cbb749b6a3eeef861894e444cf7d788
   mkdir build
   cd build
   cmake ..
   sudo make -j$nproc install
   ```
 
-* Openpyxl
+* OpenCV Version `3.X`/`4.X`
+  ```shell
+  sudo apt install libopencv-dev
   ```
-  pip install openpyxl
+
+* Libsndfile
+  ```shell
+  sudo apt-get install libsndfile1-dev
   ```
+
+* Python3 and Python3 PIP
+  ```shell
+  sudo apt install python3-dev python3-pip
+  ```
+
+* Python: Pandas
+  ```shell
+  sudo apt install python3-pandas
+  ```
+
+* Python: Openpyxl
+  ```shell
+  sudo apt install python3-openpyxl
+  ```
+
+>[!NOTE]
+> * All package installs are shown with the `apt` package manager. Use the appropriate package manager for your operating system.
+> * Run `sudo ldconfig` to configure dynamic run-time bindings
 
 ## Rpp Image Test Suite
 The image test suite can be executed under 2 backend scenarios - (HOST/HIP):
@@ -94,8 +73,8 @@ The image test suite can be executed under 2 backend scenarios - (HOST/HIP):
 The image test suite accepts the following command line arguments:
 -   input_path1: The path to the input folder 1. Default is $cwd/../TEST_IMAGES/three_images_mixed_src1
 -   input_path2: The path to the input folder 2. Default is $cwd/../TEST_IMAGES/three_images_mixed_src2
--   case_start: The starting case number for the test range (0-89). Default is 0
--   case_end: The ending case number for the test range (0-89). Default is 89
+-   case_start: The starting case number for the test range (0-91). Default is 0
+-   case_end: The ending case number for the test range (0-91). Default is 91
 -   test_type: The type of test to run (0 = Unit tests, 1 = Performance tests). Default is 0
 -   case_list: A list of specific case numbers to run. Must be used in conjunction with --test_type
 -   profiling: Run the tests with a profiler (YES/NO). Default is NO. This option is only available with HIP backend
@@ -108,52 +87,52 @@ The image test suite accepts the following command line arguments:
 ### Running the Tests for HOST Backend (RPP Image Test Suite)
 The test suite can be run with the following command:
 ``` python
-python runTests.py --input_path1 <input_path1> --input_path2 <input_path2> --case_start <case_start> --case_end <case_end> --test_type <test_type>
+python runImageTests.py --input_path1 <input_path1> --input_path2 <input_path2> --case_start <case_start> --case_end <case_end> --test_type <test_type>
 ```
 
 ### Running the Tests for HIP Backend (RPP Image Test Suite)
 The test suite can be run with the following command:
 ``` python
-python runTests.py --input_path1 <input_path1> --input_path2 <input_path2> --case_start <case_start> --case_end <case_end> --test_type <test_type> --profiling <profiling>
+python runImageTests.py --input_path1 <input_path1> --input_path2 <input_path2> --case_start <case_start> --case_end <case_end> --test_type <test_type> --profiling <profiling>
 ```
 
-## Modes of operation (Rpp Image Test Suite)
+### Modes of operation (Rpp Image Test Suite)
 -   QA mode (Unit tests) - Tolerance based PASS/FAIL tests for RPP HIP/HOST functionalities checking pixelwise match between C/SSE/AVX/HIP versions after comparison to preset golden outputs. Please note that QA mode is only supported with a batch size of 3.
 Note: QA mode is not supported for case 84 due to run-to-run variation of outputs.
 ``` python
-python runTests.py --case_start 0 --case_end 89 --test_type 0 --qa_mode 1 --batch_size 3
+python runImageTests.py --case_start 0 --case_end 91 --test_type 0 --qa_mode 1 --batch_size 3
 ```
 -   QA mode (Performance tests) - Tolerance based PASS/FAIL tests for RPP HIP/HOST functionalities checking achieved improvement in performance percentage over BatchPD versions after comparison to a threshold percentage of improvement
 ``` python
-python runTests.py --case_list 21 36 63 --test_type 1 --qa_mode 1 --batch_size 8 --num_runs 100
+python runImageTests.py --case_list 21 36 63 --test_type 1 --qa_mode 1 --batch_size 8 --num_runs 100
 ```
 -   Unit test mode - Unit tests allowing users to pass a path to a folder containing images, to execute the desired functionality and variant once, report RPP execution wall time, save and view output images
 Note: For testcase 82(RICAP) Please use images of same resolution and Batchsize > 1
       RICAP dataset path: rpp/utilities/test_suite/TEST_IMAGES/three_images_150x150_src1
 ``` python
-python runTests.py --case_start 0 --case_end 89 --test_type 0 --qa_mode 0
+python runImageTests.py --case_start 0 --case_end 91 --test_type 0 --qa_mode 0
 ```
 -   Performance test mode - Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time, or optionally, AMD rocprof kernel profiler max/min/avg time for HIP backend variants.
 Note: For testcase 82(RICAP) Please use images of same resolution and Batchsize > 1
       RICAP dataset path: rpp/utilities/test_suite/TEST_IMAGES/three_images_150x150_src1
 ``` python
-python runTests.py --case_start 0 --case_end 89 --test_type 1
+python runImageTests.py --case_start 0 --case_end 91 --test_type 1
 ```
 
 To run the unit tests / performance tests for specific case numbers. please case use case_list parameter. Example as below
 
 -   To run unittests for case numbers 0, 2, 4
 ``` python
-python runTests.py --case_list 0 2 4 --test_type 0
+python runImageTests.py --case_list 0 2 4 --test_type 0
 ```
 -   To run performance tests for case numbers 0, 2, 4
 ``` python
-python runTests.py --case_list 0 2 4 --test_type 1
+python runImageTests.py --case_list 0 2 4 --test_type 1
 ```
 
 To run performance tests with AMD rocprof kernel profiler for HIP backend variants. This will generate profiler times for HIP backend variants
 ``` python
-python runTests.py --test_type 1 --profiling YES
+python runImageTests.py --test_type 1 --profiling YES
 ```
 
 ### Summary of features (RPP Image Test Suite)
@@ -187,48 +166,48 @@ The voxel test suite accepts the following command line arguments:
 ### Running the Tests for HOST Backend (RPP Voxel Test Suite)
 The test suite can be run with the following command:
 ``` python
-python runTests_voxel.py --header_path <header_path> --data_path <data_path> --case_start <case_start> --case_end <case_end> --test_type <test_type>
+python runVoxelTests.py --header_path <header_path> --data_path <data_path> --case_start <case_start> --case_end <case_end> --test_type <test_type>
 ```
 
 ### Running the Tests for HIP Backend (RPP Voxel Test Suite)
 The test suite can be run with the following command:
 ``` python
-python runTests_voxel.py --header_path <header_path> --data_path <data_path> --case_start <case_start> --case_end <case_end> --test_type <test_type> --profiling <profiling>
+python runVoxelTests.py --header_path <header_path> --data_path <data_path> --case_start <case_start> --case_end <case_end> --test_type <test_type> --profiling <profiling>
 ```
 
 ### Modes of operation (RPP Voxel Test Suite)
 -   QA mode - Tolerance based PASS/FAIL tests for RPP HIP/HOST functionalities checking pixelwise match between C/SSE/AVX/HIP versions after comparison to preset golden outputs.
 ``` python
-python runTests_voxel.py --case_start 0 --case_end 4 --test_type 0 --qa_mode 1 --batch_size 3
+python runVoxelTests.py --case_start 0 --case_end 4 --test_type 0 --qa_mode 1 --batch_size 3
 ```
--   Unit test mode - Unit tests allowing users to pass a path to a folder containing nii fikes, to execute the desired functionality and variant once, report RPP execution wall time, save and view output images, gifs and nii files
+-   Unit test mode - Unit tests allowing users to pass a path to a folder containing nii files, to execute the desired functionality and variant once, report RPP execution wall time, save and view output images and nii files. Optionally gifs will also be saved for viewing convenience if '[Imagemagick](https://imagemagick.org/script/download.php)' is installed.
 ``` python
-python runTests_voxel.py --case_start 0 --case_end 4 --test_type 0 --qa_mode 0
+python runVoxelTests.py --case_start 0 --case_end 4 --test_type 0 --qa_mode 0
 ```
 -   Performance test mode - Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time, or optionally, AMD rocprof kernel profiler max/min/avg time for HIP backend variants.
 ``` python
-python runTests_voxel.py --case_start 0 --case_end 4 --test_type 1
+python runVoxelTests.py --case_start 0 --case_end 4 --test_type 1
 ```
 
 To run the unit tests / performance tests for specific case numbers. please case use case_list parameter. Example as below
 
 -   To run unittests for case numbers 0, 2, 4
 ``` python
-python runTests_voxel.py --case_list 0 2 4 --test_type 0
+python runVoxelTests.py --case_list 0 2 4 --test_type 0
 ```
 -   To run performance tests for case numbers 0, 2, 4
 ``` python
-python runTests_voxel.py --case_list 0 2 4 --test_type 1
+python runVoxelTests.py --case_list 0 2 4 --test_type 1
 ```
 
 To run performance tests with AMD rocprof kernel profiler for HIP backend variants. This will generate profiler times for HIP backend variants
 ``` python
-python runTests_voxel.py --test_type 1 --profiling YES
+python runVoxelTests.py --test_type 1 --profiling YES
 ```
 
 ### Summary of features (RPP Voxel Test Suite)
 The image test suite includes:
--   Unit tests that execute the desired functionality and variant once, report RPP execution wall time and save output images, gifs and nii files
+-   Unit tests that execute the desired functionality and variant once, report RPP execution wall time and save output images and nii files. Optionally gifs will also be saved for viewing convenience if '[Imagemagick](https://imagemagick.org/script/download.php)' is installed.
 -   Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time, or optionally, AMD rocprof kernel profiler max/min/avg time for HIP backend variants.
 -   Unit and Performance tests are included for three layouts - PLN1 (1 channel planar NCHW), PLN3 (3 channel planar NCHW) and PKD3 (3 channel packed/interrleaved NHWC).
 -   Unit and Performance tests are included for one input/output bitdepth F32.
@@ -282,15 +261,57 @@ To run the QA tests / performance tests for specific case numbers. please case u
 
 -   To run QA tests for case numbers 0, 1, 2
 ``` python
-python runTests.py --case_list 0 1 2 --qa_mode 1 --batch_size 3
+python runAudioTests.py --case_list 0 1 2 --qa_mode 1 --batch_size 3
 ```
 -   To run performance tests for case numbers 0, 1, 2
 ``` python
-python runTests.py --case_list 0 1 2 --test_type 1
+python runAudioTests.py --case_list 0 1 2 --test_type 1
 ```
 
 ### Summary of features (RPP Audio Test Suite)
 The audio test suite includes:
+-   Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time.
+-   QA and Performance tests are included for one input/output bitdepth F32.
+-   Support for output referencing against golden outputs, and functionality validation checking, by tolerance-based pass/fail criterions for each variant.
+
+## RPP Miscellaneous Test Suite
+The miscellaneous test suite can be executed to validate the functionality and performance of the AMD ROCm Performance Primitives (RPP) generic libraries that can process N-Dimensional inputs
+-   HOST backend - (On a CPU with HOST backend)
+-   HIP backend - (On a GPU with HIP backend)
+-   F32 Bit Depth
+
+### Command Line Arguments (RPP Miscellaneous Test Suite)
+The miscellaneous test suite accepts the following command line arguments:
+-   case_start: The starting case number for the test range (1-1). Default is 1
+-   case_end: The ending case number for the test range (1-1). Default is 1
+-   test_type: The type of test to run (0 = QA tests, 1 = Performance tests). Default is 0
+-   qa_mode: Output audio data from tests will be compared with golden outputs - (0 / 1). Default is 0
+-   case_list: A list of specific case numbers to run. Must be used in conjunction with --test_type
+-   num_dims: The number of dimensions of input. Default is 2
+-   num_runs: Specifies the number of runs for running the performance tests
+-   preserve_output: preserves the output or performance logs generated from the previous test suite run - (0 = remove output or performance logs / 1 = preserve output or performance logs). Default is 1
+-   batch_size: Specifies the batch size to use for running tests. Default is 1
+-   profiling: Run the tests with a profiler (YES/NO). Default is NO. This option is only available with HIP backend
+
+### Running the Tests for HOST Backend (RPP Miscellaneous Test Suite)
+The test suite can be run with the following command:
+``` python
+python runMiscTests.py --case_start <case_start> --case_end <case_end> --test_type <test_type>
+```
+
+### Modes of operation (RPP Miscellaneous Test Suite)
+-   QA mode - Tolerance based PASS/FAIL tests for RPP MISC HOST functionalities checking match between output and preset golden outputs. Please note that QA mode is only supported with a batch size of 3 and num dims 2 or 3
+``` python
+python runMiscTests.py --case_start 1 --case_end 1 --qa_mode 1 --batch_size 3
+```
+
+-   Performance test mode - Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time.
+``` python
+python runMiscTests.py --case_start 1 --case_end 1 --test_type 1
+```
+
+### Summary of features (RPP Miscellaneous Test Suite)
+The miscellaneous test suite includes:
 -   Performance tests that execute the desired functionality and variant 100 times by default, and report max/min/avg RPP execution wall time.
 -   QA and Performance tests are included for one input/output bitdepth F32.
 -   Support for output referencing against golden outputs, and functionality validation checking, by tolerance-based pass/fail criterions for each variant.
